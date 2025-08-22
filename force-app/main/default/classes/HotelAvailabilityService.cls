@@ -1,29 +1,15 @@
 public with sharing class HotelAvailabilityService {
 
+    // ===== DTOs =====
     public class Request {
-        @InvocableVariable(required=true)
-        public List<String> hotelNames;
-
-        @InvocableVariable(required=true)
-        public Date startDate;
-
-        @InvocableVariable(required=true)
-        public Date endDate;
-
-        @InvocableVariable(required=true)
-        public Integer numberOfPersons;
-
-        @InvocableVariable(required=true)
-        public Integer numberOfChildren;
-
-        @InvocableVariable(required=true)
-        public Id quoteId;
+        @InvocableVariable(required=true) public List<String> hotelNames;
+        @InvocableVariable(required=true) public Date startDate;
+        @InvocableVariable(required=true) public Date endDate;
+        @InvocableVariable(required=true) public Integer numberOfPersons;
+        @InvocableVariable(required=true) public Integer numberOfChildren;
+        @InvocableVariable(required=true) public Id quoteId;
     }
-
-    public class Response {
-        @InvocableVariable
-        public String availabilityMessage;
-    }
+    public class Response { @InvocableVariable public String availabilityMessage; }
 
     public class HotelWrapper {
         public String hotelName;
@@ -37,10 +23,7 @@ public with sharing class HotelAvailabilityService {
         public Id quoteId;
     }
 
-    public class HotelRequestWrapper{
-        public List<Record> records;
-    }
-
+    public class HotelRequestWrapper { public List<Record> records; }
     public class Record {
         public String Opt;
         public Date DateFrom;
@@ -50,196 +33,243 @@ public with sharing class HotelAvailabilityService {
         public Integer MaximumOptions;
         public List<RoomConfigWrapper> RoomConfigs;
     }
+    public class RoomConfigWrapper { public RoomConfig RoomConfig; }
+    public class RoomConfig { public Integer Adults; public Integer Children; public String RoomType; }
 
-    public class RoomConfigWrapper {
-        public RoomConfig RoomConfig;
-    }
-
-    public class RoomConfig {
-        public Integer Adults;
-        public Integer Children;
-        public String RoomType;
-    }
-
+    // ===== Entry point =====
     @InvocableMethod(label='Check Hotels Availability & Fire Single Event')
     public static List<Response> checkHotelAvailability(List<Request> requests) {
-        /*List<Response> results = new List<Response>();
-
-        // ✅ Query all hotel Accounts with RecordType 'Supplier'
-        Map<String, Account> hotelNameToAccountMap = new Map<String, Account>();
-        for (Account acc : [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier']) {
-            hotelNameToAccountMap.put(acc.Name.toLowerCase(), acc);
-        }
+        List<Response> out = new List<Response>();
 
         for (Request req : requests) {
-            List<HotelWrapper> hotelList = new List<HotelWrapper>();
-            String availabilityMsg = 'Results:\n';
-
-            for (String hotelName : req.hotelNames) {
-                Boolean matched = false;
-                Account matchedAccount;
-
-                for (String accName : hotelNameToAccountMap.keySet()) {
-                    if (hotelName.toLowerCase().contains(accName)) {
-                        matched = true;
-                        matchedAccount = hotelNameToAccountMap.get(accName);
-                        break;
-                    }
-                }
-
-                if (matched) {
-                    HotelWrapper hw = new HotelWrapper();
-                    hw.hotelName = hotelName;
-                    hw.startDate = req.startDate;
-                    hw.endDate = req.endDate;
-                    hw.numberOfPersons = req.numberOfPersons;
-                    hw.numberOfChildren = req.numberOfChildren;
-                    hw.availability = 'Available'; // Hardcoded for now
-                    hw.accountId = matchedAccount.Id;
-                    hw.crmCode = matchedAccount.CRM_Code__c;
-                    hw.quoteId = req.quoteId;
-
-                    hotelList.add(hw);
-                    availabilityMsg += 'Hotel: ' + hotelName + ' (AccountId: ' + matchedAccount.Id + ') - Available\n';
-                } else {
-                    availabilityMsg += 'Hotel: ' + hotelName + ' - Skipped (no match)\n';
-                }
+            if (req == null || req.hotelNames == null || req.hotelNames.isEmpty()) {
+                Response rr = new Response(); rr.availabilityMessage = 'No hotel names supplied.'; out.add(rr); continue;
             }
 
-            if (!hotelList.isEmpty()) {
-                // Serialize hotel list to JSON
-                String hotelJson = JSON.serialize(hotelList);
+            // 1) Lookup supplier Accounts + CRM codes
+            Map<String, Account> nameToAccount = new Map<String, Account>();
+            Set<String> crmCodes = new Set<String>();
+            for (Account a : [
+                SELECT Id, Name, CRM_Code__c
+                FROM Account
+                WHERE RecordType.Name = 'Supplier'
+                AND Name IN :req.hotelNames
+            ]) {
+                nameToAccount.put(a.Name != null ? a.Name.toLowerCase() : null, a);
+                if (String.isNotBlank(a.CRM_Code__c)) crmCodes.add(a.CRM_Code__c);
+            }
 
-                // Fire Platform Event once
-                Hotel_Availability_Event__e evt = new Hotel_Availability_Event__e(
-                    Hotel_JSON__c = hotelJson
+            // 2) Pull Opt__c rows for those CRM codes (service AC)
+            List<Opt__c> opts = new List<Opt__c>();
+            if (!crmCodes.isEmpty()) {
+                opts = [
+                    SELECT Id, Location__c, Service__c, Supplier__c, Code__c, CRM_Code__c
+                    FROM Opt__c
+                    WHERE CRM_Code__c IN :crmCodes
+                    AND Service__c = 'AC'
+                    LIMIT 500
+                ];
+            }
+
+            // Map CRM => list of FULL Opt codes for posting
+            Map<String, List<String>> crmToOptCodes = new Map<String, List<String>>();
+            for (Opt__c o : opts) {
+                String fullOpt = String.join(
+                    new List<String>{ o.Location__c, o.Service__c, o.Supplier__c, o.Code__c }, ''
                 );
-                EventBus.publish(evt);
+                if (String.isBlank(fullOpt)) continue;
+                List<String> listForCrm = crmToOptCodes.get(o.CRM_Code__c);
+                if (listForCrm == null) { listForCrm = new List<String>(); crmToOptCodes.put(o.CRM_Code__c, listForCrm); }
+                listForCrm.add(fullOpt);
             }
 
-            Response res = new Response();
-            res.availabilityMessage = availabilityMsg;
-            results.add(res);
-        }
-
-        return results;*/
-
-        List<Response> results = new List<Response>();
-        for (Request req : requests) {
-            Map<String, Account> hotelNameToAccountMap = new Map<String, Account>();
-            Map<String, Account> crmCodeToAccountMap = new Map<String, Account>();
-            Set<String> crmCodeSet = new Set<String>();
-            Map<String, HotelWrapper> crmCodeToHotelWrapperMap = new Map<String, HotelWrapper>();
-            List<HotelWrapper> hotelList = new List<HotelWrapper>();
+            // 3) Build the request payload (one combined request for all OPTs)
             HotelRequestWrapper requestWrapper = new HotelRequestWrapper();
             requestWrapper.records = new List<Record>();
 
-            for (Account acc : [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier' and Name = :req.hotelNames]) {
-                hotelNameToAccountMap.put(acc.Name.toLowerCase(), acc);
-                crmCodeSet.add(acc.CRM_Code__c);
+            Integer adults = (req.numberOfPersons == null ? 2 : req.numberOfPersons);
+            Integer children = (req.numberOfChildren == null ? 0 : req.numberOfChildren);
+
+            // Add one record per OPT code
+            for (List<String> codes : crmToOptCodes.values()) {
+                for (String code : codes) {
+                    Record rec = new Record();
+                    rec.Opt = code;                      // FULL OPT code
+                    rec.DateFrom = req.startDate;        // serialized as YYYY-MM-DD
+                    rec.DateTo   = req.endDate;
+                    rec.ButtonName = 'Accommodation';
+                    rec.MaximumOptions = 20;
+                    rec.Info = 'GIAME';
+
+                    RoomConfigWrapper rcw = new RoomConfigWrapper();
+                    rcw.RoomConfig = new RoomConfig();
+                    rcw.RoomConfig.Adults = adults;
+                    rcw.RoomConfig.Children = children;
+                    rcw.RoomConfig.RoomType = 'TW';
+                    rec.RoomConfigs = new List<RoomConfigWrapper>{ rcw };
+
+                    requestWrapper.records.add(rec);
+                }
             }
 
-           // for (Account acc : [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier' and Name = :req.hotelNames]) {
-            for (Opt__c opt : [SELECT Id, Location__c, Service__c, Supplier__c, Code__c, CRM_Code__c FROM Opt__c WHERE
-                               CRM_Code__c =:crmCodeSet AND Service__c = 'AC']) {
-                                // String.join(opt.Location__c,opt.Service__c, opt.CRM_Code__c,opt.code__c)
+            // 4) POST to Synatic
+            Set<String> availableCrmCodes = new Set<String>(); // suppliers with availability
+            if (!requestWrapper.records.isEmpty()) {
+                try {
+                    Http http = new Http();
+                    HttpRequest hr = new HttpRequest();
+                    hr.setEndpoint('https://rest.synatic.com/roamdev/tourplanapi/get_opts');
+                    hr.setMethod('POST');
+                    hr.setHeader('Content-Type','application/json');
+                    hr.setHeader('Accept','application/json');
+                    hr.setTimeout(20000);
+                    hr.setBody(JSON.serialize(requestWrapper));
 
-                Record rec = new Record();
-                rec.Opt = String.join(new List<String>{opt.Location__c,opt.Service__c, opt.CRM_Code__c,opt.code__c}, '');
-                rec.DateFrom = req.startDate;
-                rec.DateTo = req.endDate;
-                rec.ButtonName = 'Accommodation';
-                rec.MaximumOptions = 20;
-                rec.Info = 'GIAME';
+                    HttpResponse res = http.send(hr);
+                    if (res != null && res.getStatusCode() >= 200 && res.getStatusCode() < 300 && String.isNotBlank(res.getBody())) {
+                        // Response shape: { "result": [ <object|null>, ... ] }
+                        Object parsed = JSON.deserializeUntyped(res.getBody());
+                        List<Object> items = new List<Object>();
+                        if (parsed instanceof Map<String,Object>) {
+                            Object arr = ((Map<String,Object>)parsed).get('result');
+                            if (arr instanceof List<Object>) items = (List<Object>)arr;
+                        } else if (parsed instanceof List<Object>) {
+                            items = (List<Object>)parsed;
+                        }
 
-                // Add RoomConfig
-                rec.RoomConfigs = new List<RoomConfigWrapper>();
-                RoomConfigWrapper rcw = new RoomConfigWrapper();
-                rcw.RoomConfig = new RoomConfig();
-                rcw.RoomConfig.Adults = req.numberOfPersons != null ? req.numberOfPersons : 2;
-                rcw.RoomConfig.Children = req.numberOfChildren != null ? req.numberOfChildren : 0;
-                rcw.RoomConfig.RoomType = 'TW'; // Example, adjust if dynamic
-                rec.RoomConfigs.add(rcw);
+                        // Build reverse map: OPT code -> CRM code (so we can mark the supplier available)
+                        Map<String,String> optToCrm = new Map<String,String>();
+                        for (String crm : crmToOptCodes.keySet()) {
+                            for (String code : crmToOptCodes.get(crm)) optToCrm.put(code, crm);
+                        }
 
-                // Add to final request list
-                requestWrapper.records.add(rec);
+                        // Decide availability per OPT row using "!= -1" rule
+                        //Set<String> availableCrmCodes = new Set<String>();
+
+                        // If you have a dynamic room type in your request, use that here.
+                        // In your current code it's hardcoded to 'TW'.
+                        String requestedRoomType = 'TW';
+
+                        for (Object node : items) { // 'items' is the parsed result array
+                            if (!(node instanceof Map<String,Object>)) continue;
+                            Map<String,Object> row = (Map<String,Object>)node;
+
+                            String optCode = (String) row.get('Opt');
+                            Boolean avail = isRowAvailableByOpt(row, requestedRoomType);
+
+                            if (avail && !String.isBlank(optCode)) {
+                                String crm = optToCrm.get(optCode);
+                                if (!String.isBlank(crm)) availableCrmCodes.add(crm);
+                            }
+                        }
+
+                    } else if (res != null) {
+                        System.debug(LoggingLevel.ERROR, 'Synatic HTTP ' + res.getStatusCode() + ': ' + res.getBody());
+                    }
+                } catch (Exception ex) {
+                    System.debug(LoggingLevel.ERROR, 'Synatic callout failed: ' + ex.getMessage());
+                }
             }
 
-            system.debug('Request Wrapper: ' + JSON.serialize(requestWrapper));
-
-            String availabilityMsg = 'Results:\n';
+            // 5) Build hotel list + human message (cap to 5)
+            List<HotelWrapper> hotelList = new List<HotelWrapper>();
+            String msg = 'Results:\n';
+            Integer added = 0;
 
             for (String hotelName : req.hotelNames) {
-                Boolean matched = false;
-                Account matchedAccount;
-				if(hotelList.size() > 5) break;
-                if (hotelNameToAccountMap.containsKey(hotelName.toLowerCase()))
-                {
-                    matchedAccount = hotelNameToAccountMap.get(hotelName.toLowerCase());
+                if (added >= 5) break;
+                Account acc = nameToAccount.get(hotelName != null ? hotelName.toLowerCase() : null);
+
+                if (acc != null) {
+                    Boolean isAvail = String.isNotBlank(acc.CRM_Code__c) && availableCrmCodes.contains(acc.CRM_Code__c);
+
                     HotelWrapper hw = new HotelWrapper();
-
-                    // call the api for check availability
-                    // Http http = new Http();
-                    // HttpRequest httpRequest = new HttpRequest();
-
-                    // httpRequest.setEndpoint('https://api.example.com/checkAvailability');
-                    // httpRequest.setMethod('POST');
-                    // httpRequest.setHeader('Content-Type', 'application/json');
-                    // httpRequest.setBody(JSON.serialize(new Map<String, Object>{
-                    //     'Opt' => hotelName,
-                    //     'DateFrom' => req.startDate,
-                    //     'Info' => req.endDate,
-                    //     'SCUqty' => req.numberOfPersons,
-                    //     'ButtonName' => 'Accommodation'
-                    // }));
-
-                    // HttpResponse res = http.send(httpRequest);
-                    // if (res.getStatusCode() == 200) {
-                    //     Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
-                    //     hw.availability = (String) responseMap.get('availability');
-                    // } else {
-                    //     hw.availability = 'Error';
-                    // }
-
                     hw.hotelName = hotelName;
                     hw.startDate = req.startDate;
                     hw.endDate = req.endDate;
                     hw.numberOfPersons = req.numberOfPersons;
                     hw.numberOfChildren = req.numberOfChildren;
-                    hw.availability = 'Available'; // Hardcoded for now
-                    hw.accountId = matchedAccount.Id;
-                    hw.crmCode = matchedAccount.CRM_Code__c;
+                    hw.availability = isAvail ? 'Available' : 'Not Available';
+                    hw.accountId = acc.Id;
+                    hw.crmCode = acc.CRM_Code__c;
                     hw.quoteId = req.quoteId;
 
                     hotelList.add(hw);
-                    availabilityMsg += 'Hotel: ' + hotelName + ' (AccountId: ' + matchedAccount.Id + ') - Available\n';
-                    crmCodeToHotelWrapperMap.put(matchedAccount.CRM_Code__c, hw);
+                    msg += 'Hotel: ' + hotelName + ' (AccountId: ' + acc.Id + ') - ' + hw.availability + '\n';
+                    added++;
                 } else {
-                    availabilityMsg += 'Hotel: ' + hotelName + ' - Skipped (no match)\n';
+                    msg += 'Hotel: ' + hotelName + ' - Skipped (no Account match)\n';
                 }
             }
 
-
-            for (Opt__c opt : [SELECT Id, CRM_Code__c, Location__c, Service__c, Supplier__c, Code__c FROM Opt__c WHERE CRM_Code__c IN :crmCodeSet]) {
-
+            List<HotelWrapper> availableHotels = new List<HotelWrapper>();
+            for (HotelWrapper hw : hotelList) {
+                if (hw.availability != null && hw.availability.toLowerCase() == 'available') {
+                    availableHotels.add(hw);
+                }
             }
 
-            if (!hotelList.isEmpty()) {
-                // Serialize hotel list to JSON
-                String hotelJson = JSON.serialize(hotelList);
+            if (!availableHotels.isEmpty()) {
+                String payload = JSON.serialize(availableHotels);
+                Integer maxLen = Hotel_Availability_Event__e.Hotel_JSON__c.getDescribe().getLength();
+                if (payload.length() > maxLen) payload = payload.left(maxLen);
 
-                // Fire Platform Event once
-                Hotel_Availability_Event__e evt = new Hotel_Availability_Event__e(
-                    Hotel_JSON__c = hotelJson +'===='+JSON.serialize(requestWrapper)
+                Database.SaveResult sr = EventBus.publish(
+                    new Hotel_Availability_Event__e(Hotel_JSON__c = payload)
                 );
-                EventBus.publish(evt);
+                System.debug(sr.isSuccess()
+                             ? 'Platform Event published: ' + sr.getId()
+                             : 'Platform Event error: ' + (sr.getErrors().isEmpty() ? 'unknown' : sr.getErrors()[0].getMessage()));
+            } else {
+                System.debug('No available hotels — skipping event publish.');
             }
 
-            Response res = new Response();
-            res.availabilityMessage = availabilityMsg;
-            results.add(res);
+
+
+
+
+            Response r = new Response(); r.availabilityMessage = msg; out.add(r);
         }
 
-        return results;
+        return out;
     }
+
+
+    // Returns true if the specific OPT row is available for the requested room type
+    private static Boolean isRowAvailableByOpt(Map<String,Object> row, String requestedRoomType) {
+        if (row == null) return false;
+
+        // Navigate: OptDetailedAvails -> OptDetailedAvail -> UnitType / OptAvail
+        Map<String,Object> oda = (Map<String,Object>)row.get('OptDetailedAvails');
+        if (oda == null) return false;
+
+        Map<String,Object> od = (Map<String,Object>)oda.get('OptDetailedAvail');
+        if (od == null) return false;
+
+        String unitTypeStr = (String)od.get('UnitType');   // e.g. "sg db tw tr qd ot"
+        String optAvailStr = (String)od.get('OptAvail');   // e.g. "-3 -3 -3 -3"
+
+        if (String.isBlank(unitTypeStr) || String.isBlank(optAvailStr)) return false;
+
+        // Tokenize
+        List<String> units = new List<String>();
+        for (String t : unitTypeStr.split('\\s+')) if (!String.isBlank(t)) units.add(t.toLowerCase());
+
+        List<String> vals = new List<String>();
+        for (String v : optAvailStr.split('\\s+')) if (!String.isBlank(v)) vals.add(v.trim());
+
+        // Find the index for the requested room type (default to TW if none provided)
+        String rt = String.isBlank(requestedRoomType) ? 'tw' : requestedRoomType.toLowerCase();
+        Integer idx = units.indexOf(rt);
+
+        // If we can align the index, apply the rule: available ⇔ value != -1
+        if (idx != -1 && idx < vals.size()) {
+            return (vals[idx] != '-1');
+        }
+
+        // Fallback: if any value is not -1, treat as available
+        for (String v : vals) if (v != '-1') return true;
+        return false;
+    }
+
 }
