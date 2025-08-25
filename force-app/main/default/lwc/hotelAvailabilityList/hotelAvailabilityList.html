@@ -1,0 +1,173 @@
+<template>
+    <lightning-card title="Travel Itinerary Manager" class="slds-p-around_medium">
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Loading" size="large"
+                variant="brand"></lightning-spinner>
+        </template>
+
+        <div class="slds-m-bottom_small">
+            <lightning-button label="Clear" onclick={handleClear} variant="destructive"
+                class="slds-m-right_small"></lightning-button>
+            <lightning-button label="Save" onclick={handleSave} variant="success"></lightning-button>
+        </div>
+
+        <div class="slds-grid slds-wrap slds-m-bottom_medium">
+            <div class="slds-col slds-size_1-of-6 slds-p-right_small">
+                <lightning-combobox label="* Quantity (Rooms)" value={numRoomsString} options={roomQuantityOptions}
+                    onchange={handleRoomQuantityChange}>
+                </lightning-combobox>
+            </div>
+
+            <div class="slds-col slds-size_5-of-6">
+                <div class="slds-box slds-theme_alert-texture" style="border: 2px solid red; min-height: 40px;">
+                    <p class="slds-text-body_regular">
+                        <strong>Passengers on Quote : </strong>
+                        Adult: {quoteAdultCount},
+                        Child: {quoteChildCount},
+                        Infant: {quoteInfantCount}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <template if:true={roomConfigs}>
+            <template if:true={validationError}>
+                <p style="color: red;" class="slds-p-bottom_x-small">
+                    {validationError}
+                </p>
+            </template>
+
+            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-bottom_large" style="width: 100%;">
+                <thead>
+                    <tr class="slds-text-title_caps">
+                        <th>Rooms</th>
+                        <th>Room Type</th>
+                        <th>Adult</th>
+                        <th>Child</th>
+                        <th>Infant</th>
+                        <th>Passengers</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template for:each={roomConfigs} for:item="room" for:index="index">
+                        <tr key={room.id}>
+                            <td>{room.displayLabelRoom}</td>
+                            <td>
+                                <lightning-combobox name="roomType" value={room.roomType} options={roomTypeOptions}
+                                    data-index={index} onchange={handleRoomInputChange}></lightning-combobox>
+                            </td>
+                            <td>
+                                <lightning-input type="number" name="adults" value={room.adults} min="0" data-index={index}
+                                    onchange={handleRoomInputChange}></lightning-input>
+                            </td>
+                            <td>
+                                <lightning-input type="number" name="children" value={room.children} min="0" data-index={index}
+                                    onchange={handleRoomInputChange}></lightning-input>
+                            </td>
+                            <td>
+                                <lightning-input type="number" name="infants" value={room.infants} min="0" data-index={index}
+                                    onchange={handleRoomInputChange}></lightning-input>
+                            </td>
+                            <td>{room.passengers}</td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </template>
+
+
+        <template if:true={hasHotels}>
+            <template for:each={groupedHotels} for:item="group">
+                <div key={group.durationId} class="slds-m-around_medium slds-box slds-theme_default"
+                    style="width: 90%;">
+                    <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                        <div>
+                            <strong>Part {group.durationId}</strong> • {group.durationDays} Days
+                        </div>
+                        <div>
+                            <lightning-icon icon-name="utility:event" size="xx-small"></lightning-icon>
+                            Start: {group.startDate} &nbsp;
+                            <lightning-icon icon-name="utility:chevronright" size="xx-small"></lightning-icon>
+                            End: {group.endDate}
+                        </div>
+                    </div>
+
+                    <table class="slds-table slds-table_bordered slds-table_cell-buffer" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Hotel</th>
+                                <th>Price/Night</th>
+                                <th>Total</th>
+                                <th>Facilities</th>
+                                <th>Rating</th>
+                                <!-- <th>Action</th> -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={group.hotels} for:item="hotel" for:index="index">
+                                <tr key={hotel.hotelName}>
+                                    <td>
+                                        <div class="slds-grid slds-grid_vertical-align-center">
+                                            <img src={hotel.imageUrl} alt="Hotel"
+                                                style="width: 50px; height: 50px; margin-right: 8px;" />
+                                            <div>
+                                                <strong>{hotel.hotelName}</strong><br />
+                                                <small>CRM: {hotel.crmCode}</small><br />
+                                                <template if:true={hotel.opts.length}>
+                                                    <div class="slds-m-top_x-small slds-grid slds-align-center">
+                                                        <lightning-button-icon icon-name={hotel.iconName}
+                                                            alternative-text="Toggle Details" onclick={handleToggleOpts}
+                                                            data-group-id={group.durationId} data-index={index}
+                                                            variant="border-filled" size="small"
+                                                            class="slds-m-right_x-small">
+                                                        </lightning-button-icon>
+                                                        <span class="slds-text-body_small">Show Related OPT</span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>${hotel.pricePerNight}</td>
+                                    <td>${hotel.totalPrice}</td>
+                                    <td>
+                                        <template for:each={hotel.facilities} for:item="fac">
+                                            <span key={fac} class="slds-badge slds-m-right_x-small">{fac}</span>
+                                        </template>
+                                    </td>
+                                    <td>
+                                        <lightning-icon icon-name="utility:favorite" size="x-small"
+                                            class="slds-m-right_xx-small"></lightning-icon>
+                                        {hotel.rating}
+                                    </td>
+                                </tr>
+                                <template if:true={hotel.showOpts}>
+                                    <tr key={hotel.detailsRowKey}>
+                                        <td colspan="6">
+                                            <template for:each={hotel.opts} for:item="opt" for:index="optIndex">
+                                                <div key={opt.Id}
+                                                    class="slds-grid slds-grid_align-spread slds-p-horizontal_small slds-p-vertical_x-small slds-box slds-theme_shade">
+                                                    <div>
+                                                        <div>
+                                                            <strong>{opt.Description__c} || {opt.Comment__c}</strong>
+                                                        </div>
+                                                    </div>
+                                                    <lightning-button label="Select" data-group-id={group.durationId}
+                                                        data-hotel-index={index} data-opt-index={optIndex}
+                                                        onclick={handleSelectOpt} variant={opt.variant}>
+                                                    </lightning-button>
+                                                </div>
+                                            </template>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </template>
+        <template if:false={hasHotels}>
+            <p class="slds-p-around_medium">No hotel data received yet.</p>
+        </template>
+    </lightning-card>
+</template>
