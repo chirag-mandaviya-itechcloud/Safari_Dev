@@ -37,13 +37,13 @@ export default class HotelAvailabilityList extends NavigationMixin(LightningElem
     }
 
     async handleSubscribe() {
-        //console.log('the quote id is: ' + this.recordId);
         const messageCallback = async (response) => {
             const payload = response.data.payload;
             if (payload.Hotel_JSON__c) {
                 const hotelList = JSON.parse(payload.Hotel_JSON__c);
-                const filteredHotelList = hotelList.filter(hotel => hotel.quoteId === this.recordId);
-                console.log('Filtered Hotel List:', filteredHotelList);
+                const hotelListValues = Object.values(hotelList);
+                const filteredHotelList = hotelListValues.filter(hotel => hotel.quoteId === this.recordId);
+                console.log("Filtered Hotel List: ", filteredHotelList);
 
                 if (filteredHotelList.length === 0) {
                     console.log('No hotels match this Quote Id');
