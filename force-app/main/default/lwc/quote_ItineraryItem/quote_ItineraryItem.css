@@ -1,0 +1,170 @@
+.itinerary-item{
+    width: 100%;
+    border: 1px solid #DDDBDA;
+    border-radius: 5px;
+}
+
+.item-header{
+    background-color: #E5E2E2;
+    padding: 10px;
+    
+    border-bottom: 1px solid #ff6600;
+}
+
+.item-body{
+    /* padding: 10px; */
+}
+
+.slds-wrap-display-end{
+    justify-content: end;
+}
+
+.item-header > div {
+    display: inline-block;
+    margin-right: 0.625rem;
+}
+
+.header-label {
+    color: #374850;
+    margin: 0.313rem;
+}
+
+.header-label-value {
+    font-size: 1.5em;
+    margin: 0.313rem;
+}
+
+.item-label{
+    font-weight: bold;
+    margin-top: 0.313rem;
+}
+
+.item-value{
+    margin-top: 0.313rem;
+}
+
+.right{
+    float: right;
+    margin-top: 0.7rem;
+}
+
+.item-field{
+    padding: 5px;
+}
+
+.slds-accordion__summary {
+    --sds-c-accordion-summary-border-bottom:1px solid #DDDBDA;
+    border-bottom: 1px solid #DDDBDA !important;
+}
+
+.slds-accordion__summary-heading{   
+     font-size: 1.4em;
+}
+
+thead{
+        border-bottom: solid 1px #F0F2F5;
+}
+
+.tbl-head-solid{
+    background-color: #FAFAF9;
+    height: 3rem;
+}
+
+th, td {
+    text-align: center;
+    padding: 10px 5px 5px 5px;
+}
+
+.table-col-label{
+    width: 12%;
+}
+
+.table-col-type{
+    width: 24%;
+}
+
+button.slds-button.slds-button_icon.slds-button_icon-bare {
+    color: #374850 !important; 
+}
+
+
+/* button.section-control.slds-button.slds-button_reset.slds-accordion__summary-action
+{
+    justify-content: space-between !important;
+} */
+
+.THIS .slds-accordion__summary-action{
+    justify-content: space-between !important;
+    background-color: red;
+}
+
+.day-config-btn{
+    display: flex;
+    justify-content: end;
+}
+
+lightning-button{
+    --slds-c-button-brand-color-background: #ff6600;
+    --slds-c-button-brand-color-border:#ff6600;
+    --slds-c-button-brand-color-background-active:#ff6600;
+    --slds-c-button-color-border-active:#ff6600;
+    --slds-c-button-brand-color-background-hover:#E65C00;
+    --slds-c-button-brand-color-border-hover:#E65C00;
+}
+
+
+
+.pax-allocation-btn,.passangers-btn,.cost-markup-btn, .logistics-btn{
+    display: flex;
+    gap: 5px;
+    justify-content: end;
+    position: relative;
+    top: -2rem;
+}
+.tbl-pax-allocation,.tbl-passengers,.tbl-cost-markup{
+    position: relative;
+    top: -1.5rem;
+}
+.item-label{
+    color: #3E3E3C;
+}
+.sub-heading{
+    line-height: 24px;
+    font-size: 16px;
+    margin-top: 2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #DDDBDA;
+}
+
+.note-item div{
+    margin: 0.5rem;
+}
+
+.note-item-label{
+    color: #374850;
+}
+
+.note-item-value p{
+    margin-left: 1rem;
+}
+
+.supplier-info-item{
+    padding: 1rem 0 1rem 0;
+
+}
+
+.addOn-field > *{
+    display: inline-block !important;
+}
+
+.day-configurator > button.section-control.slds-button.slds-button_reset.slds-accordion__summary-action{
+    flex-direction: row-reverse !important;
+    justify-content: space-between !important;
+    background-color: #F5F5F5 !important;
+}
+
+.day-configurator .slds-accordion__list-item .slds-accordion__section .slds-accordion__summary-heading .slds-button .slds-accordion__summary-action{
+    flex-direction: row-reverse !important;
+    justify-content: space-between !important;
+    background-color: #F5F5F5 !important;
+}

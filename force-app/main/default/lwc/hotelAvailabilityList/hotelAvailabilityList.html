@@ -1,8 +1,7 @@
 <template>
     <lightning-card title="Travel Itinerary Manager" class="slds-p-around_medium">
         <template if:true={isLoading}>
-            <lightning-spinner alternative-text="Loading" size="large"
-                variant="brand"></lightning-spinner>
+            <lightning-spinner alternative-text="Loading" size="large" variant="brand"></lightning-spinner>
         </template>
 
         <div class="slds-m-bottom_small">
@@ -14,8 +13,7 @@
         <div class="slds-grid slds-wrap slds-m-bottom_medium">
             <div class="slds-col slds-size_1-of-6 slds-p-right_small">
                 <lightning-combobox label="* Quantity (Rooms)" value={numRoomsString} options={roomQuantityOptions}
-                    onchange={handleRoomQuantityChange}>
-                </lightning-combobox>
+                    onchange={handleRoomQuantityChange}></lightning-combobox>
             </div>
 
             <div class="slds-col slds-size_5-of-6">
@@ -29,15 +27,14 @@
                 </div>
             </div>
         </div>
-        
+
         <template if:true={roomConfigs}>
             <template if:true={validationError}>
-                <p style="color: red;" class="slds-p-bottom_x-small">
-                    {validationError}
-                </p>
+                <p style="color: red;" class="slds-p-bottom_x-small">{validationError}</p>
             </template>
 
-            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-bottom_large" style="width: 100%;">
+            <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-m-bottom_large"
+                style="width: 100%;">
                 <thead>
                     <tr class="slds-text-title_caps">
                         <th>Rooms</th>
@@ -57,16 +54,16 @@
                                     data-index={index} onchange={handleRoomInputChange}></lightning-combobox>
                             </td>
                             <td>
-                                <lightning-input type="number" name="adults" value={room.adults} min="0" data-index={index}
-                                    onchange={handleRoomInputChange}></lightning-input>
+                                <lightning-input type="number" name="adults" value={room.adults} min="0"
+                                    data-index={index} onchange={handleRoomInputChange}></lightning-input>
                             </td>
                             <td>
-                                <lightning-input type="number" name="children" value={room.children} min="0" data-index={index}
-                                    onchange={handleRoomInputChange}></lightning-input>
+                                <lightning-input type="number" name="children" value={room.children} min="0"
+                                    data-index={index} onchange={handleRoomInputChange}></lightning-input>
                             </td>
                             <td>
-                                <lightning-input type="number" name="infants" value={room.infants} min="0" data-index={index}
-                                    onchange={handleRoomInputChange}></lightning-input>
+                                <lightning-input type="number" name="infants" value={room.infants} min="0"
+                                    data-index={index} onchange={handleRoomInputChange}></lightning-input>
                             </td>
                             <td>{room.passengers}</td>
                         </tr>
@@ -75,7 +72,7 @@
             </table>
         </template>
 
-
+        <!-- ===== Hotels list ===== -->
         <template if:true={hasHotels}>
             <template for:each={groupedHotels} for:item="group">
                 <div key={group.durationId} class="slds-m-around_medium slds-box slds-theme_default"
@@ -95,12 +92,10 @@
                     <table class="slds-table slds-table_bordered slds-table_cell-buffer" style="width: 100%;">
                         <thead>
                             <tr>
+                                <!-- Price/Night and Total columns removed -->
                                 <th>Hotel</th>
-                                <th>Price/Night</th>
-                                <th>Total</th>
                                 <th>Facilities</th>
                                 <th>Rating</th>
-                                <!-- <th>Action</th> -->
                             </tr>
                         </thead>
                         <tbody>
@@ -111,50 +106,81 @@
                                             <img src={hotel.imageUrl} alt="Hotel"
                                                 style="width: 50px; height: 50px; margin-right: 8px;" />
                                             <div>
-                                                <strong>{hotel.hotelName}</strong><br />
-                                                <small>CRM: {hotel.crmCode}</small><br />
-                                                <template if:true={hotel.opts.length}>
+                                                <strong>{hotel.hotelName}</strong>
+                                                <template if:true={hotel.isAvailable}>
                                                     <div class="slds-m-top_x-small slds-grid slds-align-center">
                                                         <lightning-button-icon icon-name={hotel.iconName}
-                                                            alternative-text="Toggle Details" onclick={handleToggleOpts}
+                                                            alternative-text="Toggle Rates" onclick={handleToggleRates}
                                                             data-group-id={group.durationId} data-index={index}
                                                             variant="border-filled" size="small"
                                                             class="slds-m-right_x-small">
                                                         </lightning-button-icon>
-                                                        <span class="slds-text-body_small">Show Related OPT</span>
+                                                        <span class="slds-text-body_small">Show Rates</span>
                                                     </div>
                                                 </template>
+                                                <template if:false={hotel.isAvailable}>
+                                                    <div class="slds-m-top_x-small">
+                                                        <span
+                                                            class="slds-badge slds-theme_error slds-text-color_inverse">Not
+                                                            Available</span>
+                                                    </div>
+                                                </template>
+                                                <br />
+                                                <small>CRM: {hotel.crmCode}</small>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>${hotel.pricePerNight}</td>
-                                    <td>${hotel.totalPrice}</td>
+
+                                    <!-- Facilities -->
                                     <td>
                                         <template for:each={hotel.facilities} for:item="fac">
                                             <span key={fac} class="slds-badge slds-m-right_x-small">{fac}</span>
                                         </template>
                                     </td>
+
+                                    <!-- Rating -->
                                     <td>
                                         <lightning-icon icon-name="utility:favorite" size="x-small"
                                             class="slds-m-right_xx-small"></lightning-icon>
                                         {hotel.rating}
                                     </td>
                                 </tr>
-                                <template if:true={hotel.showOpts}>
+
+                                <!-- ===== Rates drop section (rateText + currency-formatted price on right) ===== -->
+                                <template if:true={hotel.showRates}>
                                     <tr key={hotel.detailsRowKey}>
-                                        <td colspan="6">
-                                            <template for:each={hotel.opts} for:item="opt" for:index="optIndex">
-                                                <div key={opt.Id}
-                                                    class="slds-grid slds-grid_align-spread slds-p-horizontal_small slds-p-vertical_x-small slds-box slds-theme_shade">
+                                        <td colspan="3">
+                                            <template for:each={hotel.rates} for:item="rate" for:index="rateIndex">
+                                                <div key={rate.id}
+                                                    class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_small slds-p-vertical_x-small slds-box slds-theme_shade slds-m-vertical_xx-small">
+                                                    <!-- Left: rateText -->
                                                     <div>
-                                                        <div>
-                                                            <strong>{opt.Description__c} || {opt.Comment__c}</strong>
+                                                        <div><strong>{rate.rateText}</strong></div>
+                                                        <div class="slds-text-color_weak slds-text-body_small">
+                                                            {rate.availability}
                                                         </div>
                                                     </div>
-                                                    <lightning-button label="Select" data-group-id={group.durationId}
-                                                        data-hotel-index={index} data-opt-index={optIndex}
-                                                        onclick={handleSelectOpt} variant={opt.variant}>
-                                                    </lightning-button>
+
+                                                    <!-- Right: price rectangle + Select -->
+                                                    <div class="slds-grid slds-grid_vertical-align-center">
+                                                        <!-- currency-formatted (amount already divided by 100 in JS) -->
+                                                        <div
+                                                            style="min-width: 160px; border: 2px solid #c23934; border-radius: 6px; padding: 4px 10px; text-align: center; margin-right: 8px;">
+                                                            <template if:true={rate.amount}>
+                                                                <lightning-formatted-number value={rate.amount}
+                                                                    format-style="currency"
+                                                                    currency-code={rate.currencyName}>
+                                                                </lightning-formatted-number>
+                                                            </template>
+                                                            <template if:false={rate.amount}>—</template>
+                                                        </div>
+
+                                                        <lightning-button label="Select"
+                                                            data-group-id={group.durationId} data-hotel-index={index}
+                                                            data-rate-index={rateIndex} onclick={handleSelectRate}
+                                                            variant={rate.variant}>
+                                                        </lightning-button>
+                                                    </div>
                                                 </div>
                                             </template>
                                         </td>
@@ -166,6 +192,7 @@
                 </div>
             </template>
         </template>
+
         <template if:false={hasHotels}>
             <p class="slds-p-around_medium">No hotel data received yet.</p>
         </template>

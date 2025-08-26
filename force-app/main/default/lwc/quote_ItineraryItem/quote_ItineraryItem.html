@@ -1,0 +1,723 @@
+<template>
+    <section>
+        <template if:true={openEmailModal}>
+            <c-custom-email to-address={supplierToEmailAddress} onclosemodal={handleCloseModal} fromscreen="Card"
+                quote-line-item-id={quoteLineItemId} quote-id={quoteId}
+                servicetype={serviceTypeMetadata.Supplier_Email_Service_Type__c}> </c-custom-email>
+        </template>
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+        </template>
+        <section class="itinerary-item">
+            <!-- <div>
+                <c-number-component></c-number-component>
+            </div> -->
+            <div class="item-header">
+                <div>
+                    <label for="supplier" class="header-label">Supplier Name</label>
+                    <h3 class="header-label-value">{changeSupplierDisplayName}</h3>
+                </div>
+                <div>
+                    <label for="status" class="header-label">Status</label>
+                    <h3 class="header-label-value">{reservationStatus}</h3>
+                </div>
+                <div class="right">
+                    <!-- <lightning-button-icon icon-name="utility:edit_form" size="large" class="slds-m-around_x-small"
+                        variant="bare"></lightning-button-icon> -->
+                    <lightning-button-icon icon-name="utility:email" size="large" class="slds-m-around_x-small"
+                        variant="bare" onclick={sendEmail}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:edit" size="large" class="slds-m-around_x-small"
+                        variant="bare" onclick={enableSaveButton}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:delete" size="large" class="slds-m-around_x-small"
+                        variant="bare" onclick={deleteService}></lightning-button-icon>
+                    <!-- <lightning-button-icon icon-name="utility:unlock" size="large" class="slds-m-around_x-small"
+                        variant="bare"></lightning-button-icon> -->
+                    <template if:true={showCardDetail}>
+                        <lightning-button-icon icon-name="utility:chevrondown" size="large"
+                            class="slds-m-around_x-small" variant="bare" onclick={toggleShowCardDetail}
+                            data-id={quoteLineItemId}></lightning-button-icon>
+                    </template>
+                    <template if:false={showCardDetail}>
+                        <lightning-button-icon icon-name="utility:chevronright" size="large"
+                            class="slds-m-around_x-small" variant="bare" onclick={toggleShowCardDetail}
+                            data-id={quoteLineItemId}></lightning-button-icon>
+                    </template>
+                    <!-- <button type="button" aria-controls={id} class="slds-button slds-section__title-action"
+                        data-buttonid={id} onclick={toggleSection}>
+                        <lightning-icon icon-name="utility:edit_form" alternative-text="button icon" size="x-small"
+                            class="slds-section__title-action-icon slds-button__icon_left"></lightning-icon>
+                    </button> -->
+                    <!-- <button type="button" aria-controls={id} class="slds-button slds-section__title-action"
+                        data-buttonid={id} onclick={toggleSection}>
+                        <lightning-icon icon-name="utility:switch" alternative-text="button icon" size="x-small"
+                            class="slds-section__title-action-icon slds-button__icon_left"></lightning-icon>
+                    </button> -->
+                </div>
+            </div>
+            <template if:false={showCardDetail}>
+                <template if:true={supplierConfigured}>
+                    <div class="item-body slds-grid slds-wrap">
+                        <template if:false={isFlightCard}>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Service Type</div>
+                                <div class="item-value">{selectedServiceType}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Location</div>
+                                <div class="item-value">{selectedServiceLocation}</div>
+                            </div>
+                            <div class="item-field slds-size_2-of-4">
+                                <div class="item-label">Service Detail</div>
+                                <div class="item-value">{selectedServiceDetail}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Start Date</div>
+                                <div class="item-value">{startDate}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">{durationLabel}</div>
+                                <div class="item-value">{displayDuration}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">End Date</div>
+                                <div class="item-value">{endDate}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">{quantityLabel}</div>
+                                <div class="item-value">{quantity}</div>
+                            </div>
+                        </template>
+                        <template if:true={isLogisticsCard}>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Start Location</div>
+                                <div class="item-value">{startLocation}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Start Time</div>
+                                <div class="item-value">{startTime}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">End Location</div>
+                                <div class="item-value">{endLocation}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">End Time</div>
+                                <div class="item-value">{endTime}</div>
+                            </div>
+                        </template>
+                        <template if:true={isFlightCard}>
+                            <div class="item-field slds-size_2-of-4">
+                                <div class="item-label">Airline</div>
+                                <div class="item-value">{airline}</div>
+                            </div>
+                            <div class="item-field slds-size_2-of-4">
+                                <div class="item-label">Flight Number</div>
+                                <div class="item-value">{flightNumber}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Start Date</div>
+                                <div class="item-value">{startDate}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">{quantityLabel}</div>
+                                <div class="item-value">{quantity}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">PNR Number</div>
+                                <div class="item-value">{pnr}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Ticket Class</div>
+                                <div class="item-value">{ticketClass}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Departure Airport</div>
+                                <div class="item-value">{departureAirport}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Departure Time</div>
+                                <div class="item-value">{departureTime}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Arrival Airport</div>
+                                <div class="item-value">{arrivalAirport}</div>
+                            </div>
+                            <div class="item-field slds-size_1-of-4">
+                                <div class="item-label">Arrival Time</div>
+                                <div class="item-value">{arrivalTime}</div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </template>
+            <template if:true={showCardDetail}>
+                <div class="item-body slds-grid slds-wrap">
+
+                    <lightning-tabset active-tab-value="details" style="width: 100%;">
+                        <lightning-tab label="Details" value="details">
+                            <div class="item-body slds-grid slds-wrap">
+                                <div class="item-field slds-size_1-of-2">
+                                    <c-custom-lookup-component label="Supplier Name"
+                                        selected-icon-name="standard:account" object-label="CRM"
+                                        object-api-name="CRM__c" field-api-name="NAME__c"
+                                        secondary-object-api-name="OPT__c" secondary-field-api-name="CRM_Name__c"
+                                        selected-record-id={selectedSupplierId} required=true
+                                        onvalueselected={handleLookupValueSelected}
+                                        onvaluedeselected={handleLookupValueCancel}>
+                                    </c-custom-lookup-component>
+                                </div>
+                                <div class="item-field slds-size_1-of-2">
+                                    <lightning-combobox name="service-type" label="Service Type"
+                                        value={selectedServiceType} placeholder="Select Service Type"
+                                        field-level-help="Select Service Type" options={serviceTypeOptions}
+                                        onchange={handleChangeServiceType} required></lightning-combobox>
+                                </div>
+
+                                <div class="item-field slds-size_1-of-2">
+                                    <lightning-combobox name="location" label="Location" value={selectedServiceLocation}
+                                        placeholder="Select Location" field-level-help="Select Location"
+                                        options={serviceLocaitonOptions} onchange={handleChangeLocation}
+                                        required></lightning-combobox>
+                                </div>
+                                <div class="item-field slds-size_1-of-2">
+                                    <lightning-combobox name="service-details" label="Service Details"
+                                        value={selectedServiceDetail} placeholder="Select Service Detail"
+                                        field-level-help="Select Service Detail" options={serviceDetailOptions}
+                                        onchange={handleChangeServiceDetail} required></lightning-combobox>
+
+                                </div>
+                                <template if:false={isFlightCard}>
+                                    <div class="item-field slds-size_1-of-4">
+                                        <lightning-input type="date" name="start-date" label="Start Date"
+                                            value={startDate} field-level-help="start date" min={travelStartDate}
+                                            max={travelEndDate}
+                                            message-when-range-underflow="You are attempting to add a Service outside of the defined start/end date range of this Quote. Please amend your start and/or end dates of this Quote, or amend the Service start date"
+                                            message-when-range-overflow="You are attempting to add a Service outside of the defined start/end date range of this Quote. Please amend your start and/or end dates of this Quote, or amend the Service start date"
+                                            onchange={handleChangeStartDate} required></lightning-input>
+                                    </div>
+                                </template>
+                                <template if:true={isFlightCard}>
+                                    <div class="item-field slds-size_1-of-2">
+                                        <lightning-input type="date" name="start-date" label="Start Date"
+                                            value={startDate} field-level-help="start date" min={travelStartDate}
+                                            max={travelEndDate}
+                                            message-when-range-underflow="You are attempting to add a Service outside of the defined start/end date range of this Quote. Please amend your start and/or end dates of this Quote, or amend the Service start date"
+                                            message-when-range-overflow="You are attempting to add a Service outside of the defined start/end date range of this Quote. Please amend your start and/or end dates of this Quote, or amend the Service start date"
+                                            onchange={handleChangeStartDate} required></lightning-input>
+                                    </div>
+                                </template>
+                                <template if:false={isFlightCard}>
+                                    <div class="item-field slds-size_1-of-4">
+                                        <lightning-combobox name="duration" label={durationLabel}
+                                            value={displayDuration} placeholder="Select Duration"
+                                            field-level-help="Select Duration" options={durationOptions}
+                                            onchange={handleChangeDuration} required
+                                            read-only={validateServiceDay}></lightning-combobox>
+                                    </div>
+                                    <div class="item-field slds-size_1-of-4">
+                                        <lightning-input type="date" name="end-date" label="End Date" value={endDate}
+                                            field-level-help="end date" required disabled></lightning-input>
+                                    </div>
+                                </template>
+                                <div class={inputClassList}>
+                                    <lightning-combobox name="quantity" label={quantityLabel} value={quantity}
+                                        placeholder="Select Quantity" field-level-help="Select Quantity"
+                                        options={quantityOptions} onchange={handleChangeQuantity}
+                                        required></lightning-combobox>
+                                </div>
+                                <template if:true={validateServiceDay}>
+                                    <div class="item-field slds-size_1-of-1">
+                                        <span style="color:red">{serviceDayWarningMessage}</span>
+                                    </div>
+                                </template>
+                            </div>
+                            <template if:true={supplierConfigured}>
+                                <lightning-accordion allow-multiple-sections-open active-section-name={activeSections}>
+                                    <lightning-accordion-section name="configuration" label={configurationLabel}>
+                                        <c-service-configuration quote-line-item-id={quoteLineItemId}
+                                            service-type={selectedServiceType} quantity={quantity}
+                                            supplier-info={selectedSuppiler} opt-detail={optDetail}
+                                            service-type-metadata={serviceTypeMetadata} passengers={passengers}
+                                            overriden-policy={overridenPolicy} onopenmodal={openOverridePolicyModal}
+                                            ongetconfigurationdata={handleGetConfigurationData}>
+                                        </c-service-configuration>
+                                    </lightning-accordion-section>
+                                    <template if:true={hasLogistics}>
+                                        <lightning-accordion-section name="logistics" label="Logistics">
+                                            <template if:true={isLogisticsEditable}>
+                                                <div class="slds-grid slds-wrap">
+                                                    <div class="slds-size_1-of-2"></div>
+                                                    <div class="slds-size_1-of-2 logistics-btn">
+                                                        <lightning-button variant="brand" label="Update Logistics"
+                                                            onclick={handleUpdateLogistics}
+                                                            disabled={updateLogisticsDisabled}></lightning-button>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <div class="item-body slds-grid slds-wrap">
+                                                <div class="item-field slds-size_1-of-1">
+                                                    <lightning-input type="checkbox" name={globalSearch}
+                                                        data-name={globalSearch}
+                                                        field-level-help={helpTextLabels.HT_Global_Serach}
+                                                        label="Global Search" onchange={handleGlobalSearchChecked}>
+                                                    </lightning-input>
+                                                </div>
+
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-location-lookup help-text="Select start location"
+                                                        label="Start Location" required=true type="StartLocation"
+                                                        selected-location={startLocation} global-search={globalSearch}
+                                                        onvalueselected={handleLogisticsLocationSelected}
+                                                        onvaluedeselected={handleLogisticsLocationCancel}></c-location-lookup>
+                                                    <!-- <lightning-input type="text" name="start-location" class="validate"
+                                                    label="Start Location" value={startLocation}
+                                                    onchange={handleChangeLogisticsLocation}
+                                                    field-level-help="Select start location"
+                                                    required></lightning-input> -->
+                                                </div>
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-time-lookup help-text={helpTextLabels.HT_Start_Time}
+                                                        label="Start Time" required=true type="StartTime"
+                                                        selected-time={startTime} global-search={globalSearch}
+                                                        onvalueselected={handleLogisticsTimeSelected}
+                                                        onvaluedeselected={handleLogisticsTimeCancel}></c-time-lookup>
+                                                </div>
+                                                <!-- <div class="item-field slds-size_1-of-2">
+                                                <lightning-combobox name="start-time" label="Start Time"
+                                                    class="validate" value={startTime}
+                                                    placeholder="Select Start Time"
+                                                    field-level-help={helpTextLabels.HT_Start_Time}
+                                                    options={timeOptions} onchange={handleChangeLogisticsTime}
+                                                    required></lightning-combobox>
+                                            </div> -->
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-location-lookup help-text="Select end location"
+                                                        label="End Location" required=true type="EndLocation"
+                                                        selected-location={endLocation} global-search={globalSearch}
+                                                        onvalueselected={handleLogisticsLocationSelected}
+                                                        onvaluedeselected={handleLogisticsLocationCancel}></c-location-lookup>
+                                                    <!-- <lightning-input type="text" name="end-location" class="validate"
+                                                    label="End Location" value={endLocation}
+                                                    onchange={handleChangeLogisticsLocation}
+                                                    field-level-help="Enter New Supplier Display Name"
+                                                    required></lightning-input> -->
+                                                </div>
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-time-lookup help-text={helpTextLabels.HT_End_Time}
+                                                        label="End Time" required=true type="EndTime"
+                                                        selected-time={endTime} global-search={globalSearch}
+                                                        onvalueselected={handleLogisticsTimeSelected}
+                                                        onvaluedeselected={handleLogisticsTimeCancel}></c-time-lookup>
+                                                </div>
+                                                <!-- <div class="item-field slds-size_1-of-2">
+                                                <lightning-combobox name="end-time" label="End Time" value={endTime}
+                                                    class="validate" placeholder="Select End Time"
+                                                    field-level-help={helpTextLabels.HT_End_Time}
+                                                    options={timeOptions} onchange={handleChangeLogisticsTime}
+                                                    required></lightning-combobox>
+                                            </div> -->
+                                            </div>
+                                        </lightning-accordion-section>
+                                    </template>
+                                    <template if:true={isFlightCard}>
+                                        <lightning-accordion-section name="flight-details" label="Flight Details">
+                                            <div class="item-body slds-grid slds-wrap">
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <lightning-input type="text" name="airline" class="validate"
+                                                        label="Airline" value={airline} onchange={handleChangeAirline}
+                                                        field-level-help="Enter Airline Name"
+                                                        required></lightning-input>
+                                                </div>
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <lightning-input type="text" name="flight-number" class="validate"
+                                                        label="Flight Number" value={flightNumber}
+                                                        onchange={handleChangeFlightNumber}
+                                                        field-level-help={helpTextLabels.HT_Flight_Number}
+                                                        required></lightning-input>
+                                                </div>
+                                                <div class="item-field slds-size_1-of-1">
+                                                    <lightning-input type="checkbox" name={globalSearch}
+                                                        data-name={globalSearch}
+                                                        field-level-help={helpTextLabels.HT_Global_Serach}
+                                                        label="Global Search" onchange={handleGlobalSearchChecked}>
+                                                    </lightning-input>
+                                                </div>
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-location-lookup help-text="Select departure airport"
+                                                        label="Departure Airport" required=true type="StartLocation"
+                                                        selected-location={departureAirport}
+                                                        global-search={globalSearch}
+                                                        onvalueselected={handleFlightAirportSelected}
+                                                        onvaluedeselected={handleFlightAirportCancel}></c-location-lookup>
+                                                </div>
+
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-time-lookup help-text={helpTextLabels.HT_Departure_Time}
+                                                        label="Departure Time" required=true type="DepartureTime"
+                                                        selected-time={departureTime} global-search={globalSearch}
+                                                        onvalueselected={handleFlightTimeSelected}
+                                                        onvaluedeselected={handleFlightTimeCancel}></c-time-lookup>
+                                                </div>
+                                                <!-- <div class="item-field slds-size_1-of-2">
+                                                <lightning-combobox name="departure-time" label="Departure Time"
+                                                    class="validate" value={departureTime}
+                                                    field-level-help={helpTextLabels.HT_Departure_Time}
+                                                    options={timeOptions} onchange={handleChangeFlightTime}
+                                                    required></lightning-combobox>
+                                            </div> -->
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-location-lookup help-text="Select arrival airport"
+                                                        label="Arrival Airport" required=true type="EndLocation"
+                                                        selected-location={arrivalAirport} global-search={globalSearch}
+                                                        onvalueselected={handleFlightAirportSelected}
+                                                        onvaluedeselected={handleFlightAirportCancel}></c-location-lookup>
+                                                </div>
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <c-time-lookup help-text={helpTextLabels.HT_Arrival_Time}
+                                                        label="Arrival Time" required=true type="ArrivalTime"
+                                                        selected-time={arrivalTime} global-search={globalSearch}
+                                                        onvalueselected={handleFlightTimeSelected}
+                                                        onvaluedeselected={handleFlightTimeCancel}></c-time-lookup>
+                                                </div>
+                                                <!-- <div class="item-field slds-size_1-of-2">
+                                                <lightning-combobox name="arrival-time" label="Arrival Time"
+                                                    class="validate" value={arrivalTime}
+                                                    field-level-help={helpTextLabels.HT_Arrival_Time}
+                                                    options={timeOptions} onchange={handleChangeFlightTime}
+                                                    required></lightning-combobox>
+                                            </div> -->
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <lightning-input type="text" name="pnr-number" label="PNR Number"
+                                                        value={pnr} onchange={handleChangePNR}
+                                                        field-level-help={helpTextLabels.HT_PNR}></lightning-input>
+                                                </div>
+                                                <div class="item-field slds-size_1-of-2">
+                                                    <lightning-combobox name="ticket-class" label="Ticket Class"
+                                                        class="validate" value={ticketClass}
+                                                        field-level-help={helpTextLabels.HT_Ticket_Class}
+                                                        options={ticketClassOptions} onchange={handleChangeTicketClass}
+                                                        required></lightning-combobox>
+                                                    <!-- <lightning-input type="text" name="ticket-class"
+                                                    label="Ticket Class" value={ticketClass}
+                                                    onchange={handleChangeTicketClass}
+                                                    field-level-help={helpTextLabels.HT_Ticket_Class}></lightning-input> -->
+                                                </div>
+                                                <div class="item-field slds-size_1-of-1">
+                                                    <lightning-input type="text" name="luggage-allowance"
+                                                        label="Luggage Allowance and Weight Restrictions"
+                                                        value={luggageAllowance} onchange={handleChangeLuggageAllowance}
+                                                        field-level-help={helpTextLabels.HT_Luggage_Allowance}></lightning-input>
+                                                </div>
+                                            </div>
+                                        </lightning-accordion-section>
+                                    </template>
+                                    <!-- <lightning-accordion-section name="status" label="Status">
+                                        <div class="item-body slds-grid slds-wrap">
+                                            <div class="item-field slds-size_1-of-2">
+                                                <lightning-combobox name="reservation-status" label="Reservation Status"
+                                                    class="validate" value={reservationStatus}
+                                                    placeholder="Reservation Status"
+                                                    field-level-help="Select Reservation Status"
+                                                    options={reservationStatusOptions}
+                                                    onchange={handleChangeReservationStatus}
+                                                    required></lightning-combobox>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-2">
+                                                <lightning-input type="date" name="provisional-expiry-date"
+                                                    label="Provisional Expriy Date" value={provisionalExpDate}
+                                                    field-level-help="Select Provisional Expiry Date"></lightning-input>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-2">
+                                                <lightning-input type="text" name="reservation-number"
+                                                    label="Reservation Number" value={reservationNumber}
+                                                    onchange={handleChangeReservationNumber}
+                                                    field-level-help="Enter Reservation Number"></lightning-input>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-2">
+                                                <lightning-input type="text" name="change-supplier-display-name"
+                                                    class="validate" label="Change Supplier Display Name"
+                                                    value={changeSupplierDisplayName}
+                                                    onchange={handleChnageSupplierDisplayName}
+                                                    field-level-help={helpTextLabels.HT_Change_Supplier_Display_Name}
+                                                    required></lightning-input>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-1">
+                                                <lightning-input type="text" name="change-service-display-name"
+                                                    class="validate" label="Change Service Display Name"
+                                                    value={changeServiceDisplayName}
+                                                    onchange={handleChangeServiceDisplayName}
+                                                    field-level-help={helpTextLabels.HT_Change_Service_Display_Name}
+                                                    required></lightning-input>
+                                            </div>
+                                        </div>
+                                    </lightning-accordion-section> -->
+                                    <template if:false={isExtraCard}>
+                                        <lightning-accordion-section name="add-ons" label="Add Ons">
+                                            <div class="item-body slds-grid slds-wrap">
+                                                <template for:each={addOns} for:item="addOn">
+                                                    <div key={addOn.name}
+                                                        class="item-field slds-size_1-of-2 addOn-field">
+                                                        <lightning-input type="checkbox" name={addOn.name}
+                                                            data-name={addOn.name} checked={addOn.checked}
+                                                            label={addOn.label} onchange={handleAddOnChecked}>
+                                                        </lightning-input>
+                                                        <template if:true={addOn.required}>
+                                                            <span style="color:red">*</span>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </lightning-accordion-section>
+                                    </template>
+                                    <lightning-accordion-section name="notes" label="Notes">
+                                        <div class="item-body slds-grid slds-wrap">
+                                            <div class="item-field slds-size_1-of-1">
+                                                <lightning-textarea type="textarea" name="supplier-description"
+                                                    value={supplierDescription} label="Supplier Description"
+                                                    placeholder=""
+                                                    onchange={handleSupplierDescriptionChange}></lightning-textarea>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-1">
+                                                <lightning-textarea type="textarea" name="service-description"
+                                                    value={serviceDescription} label="Service Description"
+                                                    placeholder=""
+                                                    onchange={handleServiceDescriptionChange}></lightning-textarea>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-1">
+                                                <lightning-textarea type="textarea" name="service-inclusion"
+                                                    value={serviceInclusionNote} label="Service Inclusion"
+                                                    placeholder="" field-level-help={serviceInclusionHelpText}
+                                                    onchange={handleInclusionNoteChange}></lightning-textarea>
+                                            </div>
+                                            <div class="item-field slds-size_1-of-1">
+                                                <lightning-textarea type="textarea" name="service-exclusion"
+                                                    value={serviceExclusionNote} label="Service Exclusion"
+                                                    placeholder="" field-level-help={serviceExclusionHelpText}
+                                                    onchange={handleExclusionNoteChange}></lightning-textarea>
+                                            </div>
+                                        </div>
+                                    </lightning-accordion-section>
+                                    <div class="item-body slds-grid slds-wrap  slds-grid_reverse">
+                                        <div class="item-field slds-size_1-of-12">
+                                            <lightning-button variant="brand" label="Save" onclick={handleSaveService}
+                                                disabled={saveDisabled}></lightning-button>
+                                        </div>
+                                    </div>
+                                    <template if:true={hasCostMarkup}>
+                                        <lightning-accordion-section name="cost-markups" label="Cost and Markups">
+                                            <div class="slds-grid slds-wrap">
+                                                <div class="slds-size_1-of-2"></div>
+                                                <div class="cost-markup-btn slds-size_1-of-2">
+                                                    <lightning-button variant="brand" label="Edit"
+                                                        disabled={costMarkupDisabled}
+                                                        onclick={openEditCostMarkupModal}></lightning-button>
+                                                    <lightning-button variant="brand" label="Delete"
+                                                        disabled={costMarkupDisabled}
+                                                        onclick={deleteCostMarkups}></lightning-button>
+                                                    <template if:false={hasRateAcceptedRejected}>
+                                                        <lightning-button variant="brand" label="Accept Rate"
+                                                            disabled={costMarkupDisabled}
+                                                            onclick={acceptRateCostMarkups}></lightning-button>
+                                                        <lightning-button variant="brand" label="Reject Rate"
+                                                            disabled={costMarkupDisabled}
+                                                            onclick={rejectRateCostMarkups}></lightning-button>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <template if:false={hasRateAcceptedRejected}>
+                                                    <div style="position:relative; top: -2rem;">
+                                                        <span style="color: red;">Please Accept or Reject rates
+                                                            before proceeding.</span>
+                                                    </div>
+                                                </template>
+                                                <table class="tbl-cost-markup">
+                                                    <thead class="tbl-head-solid">
+                                                        <tr>
+                                                            <th class="slds-size_1-of-12"><lightning-input
+                                                                    type="checkbox" name="select-all"
+                                                                    id="selectAllCostMarkup"
+                                                                    data-name="selectAllCostMarkup"
+                                                                    onchange={toggleSelectAllCostMarkup}
+                                                                    variant="label-hidden"></lightning-input>
+                                                            </th>
+                                                            <th class="slds-size_2-of-12">PAX</th>
+                                                            <th class="slds-size_2-of-12">Allocation</th>
+                                                            <th class="slds-size_2-of-12">Nett</th>
+                                                            <th class="slds-size_1-of-12">GP%</th>
+                                                            <th class="slds-size_2-of-12">Sales</th>
+                                                            <th class="slds-size_2-of-12">Client Currency</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td></td>
+                                                            <td></td>
+                                                            <td></td>
+                                                            <td><lightning-formatted-number value={costMarkup.netCost}
+                                                                    format-style="currency"
+                                                                    currency-code={costMarkup.supplierCurrency}
+                                                                    currency-display-as="symbol"></lightning-formatted-number>
+                                                            </td>
+                                                            <td>{costMarkup.gp}%</td>
+                                                            <td><lightning-formatted-number value={costMarkup.netSale}
+                                                                    format-style="currency"
+                                                                    currency-code={costMarkup.supplierCurrency}
+                                                                    currency-display-as="symbol"></lightning-formatted-number>
+                                                            </td>
+                                                            <td>
+                                                                <lightning-formatted-number value={costMarkup.netSaleCC}
+                                                                    format-style="currency"
+                                                                    currency-code={quoteData.Currency__c}
+                                                                    currency-display-as="symbol"></lightning-formatted-number>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <template for:each={costMarkup.costMarkups} for:item="service"
+                                                    for:index="serviceId">
+                                                    <lightning-accordion-section key={service.recordId}
+                                                        name={service.recordId} label={service.displayLabel}>
+                                                        <table>
+                                                            <tbody>
+                                                                <template for:each={service.chargeTypes}
+                                                                    for:item="chargeType" for:index="chargeTypeId">
+                                                                    <tr key={chargeType.chargeTypeId}>
+                                                                        <td class="slds-size_1-of-12">
+                                                                            <lightning-input type="checkbox"
+                                                                                name={chargeType.chargeTypeId}
+                                                                                id={chargeType.chargeTypeId}
+                                                                                data-name="costMarkupCheckbox"
+                                                                                data-record-id={chargeType.chargeTypeId}
+                                                                                data-service-id={service.recordId}
+                                                                                onchange={toggleChargeTypeCheckbox}
+                                                                                variant="label-hidden"></lightning-input>
+                                                                        </td>
+                                                                        <td class="slds-size_2-of-12">
+                                                                            {chargeType.passengerName}</td>
+                                                                        <td class="slds-size_2-of-12">
+                                                                            {chargeType.allocationType}</td>
+                                                                        <td class="slds-size_2-of-12">
+
+                                                                            <lightning-formatted-number
+                                                                                value={chargeType.netCost}
+                                                                                format-style="currency"
+                                                                                currency-code={chargeType.supplierCurrency}
+                                                                                currency-display-as="symbol"></lightning-formatted-number>
+
+                                                                        </td>
+                                                                        <td class="slds-size_1-of-12">
+                                                                            {chargeType.gp}%
+                                                                        </td>
+                                                                        <td class="slds-size_2-of-12">
+                                                                            <lightning-formatted-number
+                                                                                value={chargeType.netSale}
+                                                                                format-style="currency"
+                                                                                currency-code={chargeType.supplierCurrency}
+                                                                                currency-display-as="symbol"></lightning-formatted-number>
+
+                                                                        </td>
+                                                                        <td class="slds-size_2-of-12">
+
+                                                                            <lightning-formatted-number
+                                                                                value={chargeType.netSaleCC}
+                                                                                format-style="currency"
+                                                                                currency-code={quoteData.Currency__c}
+                                                                                currency-display-as="symbol"></lightning-formatted-number>
+                                                                        </td>
+                                                                    </tr>
+                                                                </template>
+                                                            </tbody>
+                                                        </table>
+                                                    </lightning-accordion-section>
+                                                </template>
+                                            </div>
+                                        </lightning-accordion-section>
+                                    </template>
+                                </lightning-accordion>
+                            </template>
+
+                        </lightning-tab>
+                        <template if:true={hasQuoteLineItem}>
+                            <lightning-tab label="Day Configurator" value="day-configurator">
+                                <lightning-accordion allow-multiple-sections-open active-section-name={activeSections}>
+                                    <template for:each={quoteLineItemList} for:item="lineItem">
+                                        <lightning-accordion-section key={lineItem.Id} name={lineItem.Id}
+                                            label={lineItem.label} class="day-configurator">
+                                            <c-day-configuration quote-id={quoteId} quote-line-item-id={lineItem.Id}
+                                                opt-detail={optDetail} service-type-metadata={serviceTypeMetadata}
+                                                selected-suppiler={selectedSuppiler} passengers={passengers}
+                                                overriden-policy={overridenPolicy}></c-day-configuration>
+                                        </lightning-accordion-section>
+                                    </template>
+
+                                </lightning-accordion>
+                            </lightning-tab>
+                            <lightning-tab label="Passenger Allocation" value="passanger-allocation">
+                                <c-passenger-allocation record-id={quoteLineItemId}
+                                    quote-line-item-detail={quoteLineItemDetail}
+                                    onrefreshcard={refreshCard}></c-passenger-allocation>
+
+                            </lightning-tab>
+                            <!--<lightning-tab label="Suppiler" value="supplier">
+                            <c-supplier-info-v1 crm-code={crmCode}></c-supplier-info-v1>
+                        </lightning-tab>-->
+                            <lightning-tab label="Suppiler" value="supplier">
+                                <c-supplier-info crm-code={crmCode} optid={optDetail.Id}></c-supplier-info>
+
+                            </lightning-tab>
+                        </template>
+
+                    </lightning-tabset>
+
+                </div>
+            </template>
+
+        </section>
+        <template if:true={isOpenModal}>
+            <div tabindex="-1" class="modal-glass slds-backdrop fadein slds-fade-in-open"
+                data-aura-rendered-by="49:4553;a" style="opacity: 0.8;"></div>
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true"
+                aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open" style="min-height: 500px;">
+                <div class="slds-modal__container">
+                    <!-- modal header start -->
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse"
+                            title="Close" onclick={handleCancelModal}>
+                            <lightning-icon icon-name="utility:close" alternative-text="close" variant="inverse"
+                                size="small"></lightning-icon>
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Override Supplier
+                            Policy</h2>
+                    </header>
+
+                    <!-- modal body start -->
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                        <div>
+                            The Supplier Policy is preventing you from saving these services, please select "OK" to
+                            override the supplier policy, which will override any policies and restrictions, and
+                            creates a service lines. You will need to "Accept Rate" if a related rate is found, or
+                            manually enter specific service rates if no rate is found.
+                        </div>
+
+                    </div>
+                    <!-- modal footer start-->
+                    <footer class="slds-modal__footer">
+                        <lightning-button variant="neutral" label="Cancel"
+                            onclick={handleCancelModal}></lightning-button>
+                        <lightning-button variant="brand" label="OK" onclick={handleSaveModal}
+                            class="slds-m-left_x-small"></lightning-button>
+                    </footer>
+                </div>
+            </section>
+        </template>
+        <template if:true={isOpenCostMarkupModal}>
+            <c-edit-cost-markup cost-markup={costMarkup} quote-data={quoteData}
+                onclosemodal={handleCloseEditCostMarkupModal}
+                onsavemodal={handleSaveEditCostMarkupModal}></c-edit-cost-markup>
+        </template>
+        <!-- <template if:false={isLoading}>
+        </template> -->
+    </section>
+</template>

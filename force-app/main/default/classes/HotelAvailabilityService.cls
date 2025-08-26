@@ -31,6 +31,7 @@ public with sharing class HotelAvailabilityService {
         public Decimal totalPrice;
         public String currencyName;
         public String rateText;
+        public String OptId;
     }
 
     public class HotelWrapper {
@@ -211,7 +212,8 @@ return results;*/
                 for (Object result : resultsList) {
                     if (result == null) continue;
                     Map<String, Object> resultMap = (Map<String, Object>) result;
-                    String crmCode = OptCodeToCrmCode.get((String) resultMap.get('Opt'));
+                    String optCode = (String) resultMap.get('Opt');
+                    String crmCode = OptCodeToCrmCode.get(optCode);
                     String supplierName = '';
                     if (resultMap.containsKey('OptGeneral')) {
                         Map<String, Object> optGeneral = (Map<String, Object>) resultMap.get('OptGeneral');
@@ -251,13 +253,21 @@ return results;*/
                         Map<String, Object> stayResultMap = (Map<String, Object>) osr;
                         if (stayResultMap.get('Availability') == 'NO') continue;
                         HotelAvailabilityResult har = new HotelAvailabilityResult();
+                        har.OptId = (String) optCode;
                         har.hotelName = supplierName;
                         har.availability = (String) stayResultMap.get('Availability');
                         har.currencyName = (String) stayResultMap.get('Currency');
                         har.totalPrice = stayResultMap.containsKey('TotalPrice') && stayResultMap.get('TotalPrice') != null
                             ? Decimal.valueOf(String.valueOf(stayResultMap.get('TotalPrice')))
                             : 0;
-                        har.rateText = stayResultMap.get('RateText') != null ? (String) stayResultMap.get('RateText') : '';
+
+                        if (stayResultMap.containsKey('RateText') && String.isNotBlank(String.valueOf(stayResultMap.get('RateText')))) {
+                            har.rateText = String.valueOf(stayResultMap.get('RateText'));
+                        } else {
+                            Map<String, String> rateDetails = (Map<String, String>) stayResultMap.get('ExternalRateDetails');
+                            har.rateText = rateDetails != null ? rateDetails.get('ExtOptionDescr') : '';
+                        }
+
                         hw.availabilityResults.add(har);
                     }
                     if (hw.availabilityResults.isEmpty()) {
