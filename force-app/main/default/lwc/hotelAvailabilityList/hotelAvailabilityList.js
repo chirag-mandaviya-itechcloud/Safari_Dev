@@ -341,6 +341,152 @@ export default class HotelAvailabilityList extends NavigationMixin(LightningElem
         ];
     }
 
+    // async handleSave() {
+    //     this.isLoading = true;
+
+    //     if (this.validationError) {
+    //         this.showToast('Error', this.validationError, 'error');
+    //         this.isLoading = false;
+    //         return;
+    //     }
+
+    //     let groupFound = false;
+    //     let allResults = [];
+
+    //     for (const group of this.groupedHotels) {
+    //         const selectedHotel = group.hotels.find(hotel =>
+    //             hotel.rates.some(rate => rate.selected)
+    //         );
+
+    //         if (!selectedHotel) {
+    //             console.warn(`No hotel selected in group starting ${group.startDate}`);
+    //             continue;
+    //         }
+
+    //         const selectedRate = selectedHotel.rates.find(rate => rate.selected);
+
+    //         console.log(`Selected Rate for hotel "${selectedHotel.hotelName}"`, selectedRate);
+
+    //         // get here OPT record for create QuoteLineItem
+    //         const selectedOPT = await getOptByOptCode({ optCode: selectedRate.optId });
+    //         console.log(`Selected OPT for hotel "${selectedHotel.hotelName}"`, selectedOPT);
+
+    //         if (!selectedOPT || !selectedOPT[0].ExternalId__c) {
+    //             console.warn(`Skipping hotel "${selectedHotel.hotelName}" due to missing selected Rate or ExternalId__c`);
+    //             continue;
+    //         }
+
+    //         groupFound = true;
+
+    //         const roomConfigurations = this.roomConfigs.map((room, i) => ({
+    //             id: i + 1,
+    //             serviceType: 'Accommodation',
+    //             serviceSubtype: room.roomType,
+    //             adults: room.adults,
+    //             children: room.children,
+    //             infants: room.infants,
+    //             passengers: room.adults + room.children + room.infants,
+    //             quoteLineItemId: null,
+    //             order: i + 1
+    //         }));
+
+    //         const params = {
+    //             serviceLineItemName: selectedHotel.hotelName,
+    //             selectedServiceType: selectedOPT[0].SRV_Name__c,
+    //             selectedLocation: selectedOPT[0].LOC_Name__c,
+    //             selectedSupplierName: selectedHotel.hotelName,
+    //             selectedSupplierId: selectedOPT[0].CRM_Lookup__c,
+    //             selectedServiceDetail: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
+    //             selectedServiceDetailDisplayName: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
+    //             quoteLineItemId: 'newitem',
+    //             serviceClientNotes: '',
+    //             serviceReservationNumber: '',
+    //             serviceSelectServiceStatus: 'Not Booked',
+    //             serviceExpiryDate: '',
+    //             overrideDetails: false,
+    //             overridenSupplierPolicy: true,// Made these true to over ride passenger configuration
+    //             selectedPassengers: [],
+    //             serviceDate: group.startDate,
+    //             numberOfDays: group.durationDays.toString(),
+    //             displayDuration: group.durationDays.toString(),
+    //             quoteId: this.recordId,
+    //             roomConfigurations: roomConfigurations,
+    //             logistics: {},
+    //             flightDetail: {},
+    //             oldChargeTypes: [],
+    //             keepRatesOnDateChange: true,
+    //             selectedOPT: selectedOPT[0].ExternalId__c,
+    //             addOns: [],
+    //             serviceInclusionNote: '',
+    //             serviceExclusionNote: '',
+    //             supplierDescription: '',
+    //             serviceDescription: ''
+    //         };
+
+    //         console.log('Prepared params for SaveQuoteLineItem:', params);
+
+    //         try {
+    //             console.log(`Saving Quote Line Item for "${selectedHotel.hotelName}" with params:`, params);
+    //             const result = await SaveQuoteLineItem(params);
+    //             // const result = await SaveQuoteLineItem({
+    //             //     serviceLineItemName: params.serviceLineItemName,
+    //             //     selectedServiceType: params.selectedServiceType,
+    //             //     selectedLocation: params.selectedLocation,
+    //             //     selectedSupplierName: params.selectedSupplierName,
+    //             //     selectedSupplierId: params.selectedSupplierId,
+    //             //     selectedServiceDetail: params.selectedServiceDetail,
+    //             //     selectedServiceDetailDisplayName: params.selectedServiceDetailDisplayName,
+    //             //     quoteLineItemId: params.quoteLineItemId,
+    //             //     serviceClientNotes: params.serviceClientNotes,
+    //             //     serviceReservationNumber: params.serviceReservationNumber,
+    //             //     serviceSelectServiceStatus: params.serviceSelectServiceStatus,
+    //             //     serviceExpiryDate: params.serviceExpiryDate,
+    //             //     overrideDetails: params.overrideDetails,
+    //             //     overridenSupplierPolicy: params.overridenSupplierPolicy,
+    //             //     selectedPassengers: params.selectedPassengers,
+    //             //     serviceDate: params.serviceDate,
+    //             //     numberOfDays: params.numberOfDays,
+    //             //     displayDuration: params.displayDuration,
+    //             //     quoteId: params.quoteId,
+    //             //     roomConfigurations: params.roomConfigurations,
+    //             //     logistics: params.logistics,
+    //             //     flightDetail: params.flightDetail,
+    //             //     oldChargeTypes: params.oldChargeTypes,
+    //             //     keepRatesOnDateChange: params.keepRatesOnDateChange,
+    //             //     selectedOPT: params.selectedOPT,
+    //             //     addOns: params.addOns,
+    //             //     serviceInclusionNote: params.serviceInclusionNote,
+    //             //     serviceExclusionNote: params.serviceExclusionNote,
+    //             //     supplierDescription: params.supplierDescription,
+    //             //     serviceDescription: params.serviceDescription
+    //             // });
+    //             allResults.push(...(result || []));
+    //             console.log('Result from SaveQuoteLineItem:', result);
+    //         } catch (error) {
+    //             console.error(`Error saving for "${selectedHotel.hotelName}": `, error);
+    //             allResults.push(error.message || 'Unknown error');
+    //         }
+    //     }
+
+    //     if (!groupFound) {
+    //         this.showToast('Warning', 'Please select one OPT per part before saving.', 'warning');
+    //         this.isLoading = false;
+    //     } else {
+    //         if (allResults.length === 0) {
+    //             this.isLoading = false;
+    //             this.showToast('Success', 'All selected Quote Line Items saved successfully.', 'success');
+    //             // Delay to show the toast, then reload the page
+    //             setTimeout(() => {
+    //                 window.location.reload();
+    //             }, 2000);
+    //         } else {
+    //             this.isLoading = false;
+    //             this.showToast('Error', `Errors occurred: ${allResults.join(', ')} `, 'error');
+    //         }
+    //     }
+
+    // }
+
     async handleSave() {
         this.isLoading = true;
 
@@ -354,137 +500,102 @@ export default class HotelAvailabilityList extends NavigationMixin(LightningElem
         let allResults = [];
 
         for (const group of this.groupedHotels) {
-            const selectedHotel = group.hotels.find(hotel =>
+            // 🔑 collect all selected hotels in this group
+            const selectedHotels = group.hotels.filter(hotel =>
                 hotel.rates.some(rate => rate.selected)
             );
 
-            if (!selectedHotel) {
+            if (selectedHotels.length === 0) {
                 console.warn(`No hotel selected in group starting ${group.startDate}`);
                 continue;
             }
 
-            const selectedRate = selectedHotel.rates.find(rate => rate.selected);
+            for (const selectedHotel of selectedHotels) {
+                const selectedRate = selectedHotel.rates.find(rate => rate.selected);
+                console.log(`Selected Rate for hotel "${selectedHotel.hotelName}"`, selectedRate);
 
-            console.log(`Selected Rate for hotel "${selectedHotel.hotelName}"`, selectedRate);
+                // get OPT record for create QuoteLineItem
+                const selectedOPT = await getOptByOptCode({ optCode: selectedRate.optId });
+                console.log(`Selected OPT for hotel "${selectedHotel.hotelName}"`, selectedOPT);
 
-            // get here OPT record for create QuoteLineItem
-            const selectedOPT = await getOptByOptCode({ optCode: selectedRate.optId });
-            console.log(`Selected OPT for hotel "${selectedHotel.hotelName}"`, selectedOPT);
+                if (!selectedOPT || !selectedOPT[0].ExternalId__c) {
+                    console.warn(`Skipping hotel "${selectedHotel.hotelName}" due to missing selected Rate or ExternalId__c`);
+                    continue;
+                }
 
-            if (!selectedOPT || !selectedOPT[0].ExternalId__c) {
-                console.warn(`Skipping hotel "${selectedHotel.hotelName}" due to missing selected Rate or ExternalId__c`);
-                continue;
-            }
+                groupFound = true;
 
-            groupFound = true;
+                const roomConfigurations = this.roomConfigs.map((room, i) => ({
+                    id: i + 1,
+                    serviceType: 'Accommodation',
+                    serviceSubtype: room.roomType,
+                    adults: room.adults,
+                    children: room.children,
+                    infants: room.infants,
+                    passengers: room.adults + room.children + room.infants,
+                    quoteLineItemId: null,
+                    order: i + 1
+                }));
 
-            const roomConfigurations = this.roomConfigs.map((room, i) => ({
-                id: i + 1,
-                serviceType: 'Accommodation',
-                serviceSubtype: room.roomType,
-                adults: room.adults,
-                children: room.children,
-                infants: room.infants,
-                passengers: room.adults + room.children + room.infants,
-                quoteLineItemId: null,
-                order: i + 1
-            }));
+                const params = {
+                    serviceLineItemName: selectedHotel.hotelName,
+                    selectedServiceType: selectedOPT[0].SRV_Name__c,
+                    selectedLocation: selectedOPT[0].LOC_Name__c,
+                    selectedSupplierName: selectedHotel.hotelName,
+                    selectedSupplierId: selectedOPT[0].CRM_Lookup__c,
+                    selectedServiceDetail: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
+                    selectedServiceDetailDisplayName: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
+                    quoteLineItemId: 'newitem',
+                    serviceClientNotes: '',
+                    serviceReservationNumber: '',
+                    serviceSelectServiceStatus: 'Not Booked',
+                    serviceExpiryDate: '',
+                    overrideDetails: false,
+                    overridenSupplierPolicy: true,
+                    selectedPassengers: [],
+                    serviceDate: group.startDate,
+                    numberOfDays: group.durationDays.toString(),
+                    displayDuration: group.durationDays.toString(),
+                    quoteId: this.recordId,
+                    roomConfigurations: roomConfigurations,
+                    logistics: {},
+                    flightDetail: {},
+                    oldChargeTypes: [],
+                    keepRatesOnDateChange: true,
+                    selectedOPT: selectedOPT[0].ExternalId__c,
+                    addOns: [],
+                    serviceInclusionNote: '',
+                    serviceExclusionNote: '',
+                    supplierDescription: '',
+                    serviceDescription: ''
+                };
 
-            const params = {
-                serviceLineItemName: selectedHotel.hotelName,
-                selectedServiceType: selectedOPT[0].SRV_Name__c,
-                selectedLocation: selectedOPT[0].LOC_Name__c,
-                selectedSupplierName: selectedHotel.hotelName,
-                selectedSupplierId: selectedOPT[0].CRM_Lookup__c,
-                selectedServiceDetail: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
-                selectedServiceDetailDisplayName: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
-                quoteLineItemId: 'newitem',
-                serviceClientNotes: '',
-                serviceReservationNumber: '',
-                serviceSelectServiceStatus: 'Not Booked',
-                serviceExpiryDate: '',
-                overrideDetails: false,
-                overridenSupplierPolicy: true,// Made these true to over ride passenger configuration
-                selectedPassengers: [],
-                serviceDate: group.startDate,
-                numberOfDays: group.durationDays.toString(),
-                displayDuration: group.durationDays.toString(),
-                quoteId: this.recordId,
-                roomConfigurations: roomConfigurations,
-                logistics: {},
-                flightDetail: {},
-                oldChargeTypes: [],
-                keepRatesOnDateChange: true,
-                selectedOPT: selectedOPT[0].ExternalId__c,
-                addOns: [],
-                serviceInclusionNote: '',
-                serviceExclusionNote: '',
-                supplierDescription: '',
-                serviceDescription: ''
-            };
+                console.log('Prepared params for SaveQuoteLineItem:', params);
 
-            console.log('Prepared params for SaveQuoteLineItem:', params);
-
-            try {
-                console.log(`Saving Quote Line Item for "${selectedHotel.hotelName}" with params:`, params);
-                const result = await SaveQuoteLineItem(params);
-                // const result = await SaveQuoteLineItem({
-                //     serviceLineItemName: params.serviceLineItemName,
-                //     selectedServiceType: params.selectedServiceType,
-                //     selectedLocation: params.selectedLocation,
-                //     selectedSupplierName: params.selectedSupplierName,
-                //     selectedSupplierId: params.selectedSupplierId,
-                //     selectedServiceDetail: params.selectedServiceDetail,
-                //     selectedServiceDetailDisplayName: params.selectedServiceDetailDisplayName,
-                //     quoteLineItemId: params.quoteLineItemId,
-                //     serviceClientNotes: params.serviceClientNotes,
-                //     serviceReservationNumber: params.serviceReservationNumber,
-                //     serviceSelectServiceStatus: params.serviceSelectServiceStatus,
-                //     serviceExpiryDate: params.serviceExpiryDate,
-                //     overrideDetails: params.overrideDetails,
-                //     overridenSupplierPolicy: params.overridenSupplierPolicy,
-                //     selectedPassengers: params.selectedPassengers,
-                //     serviceDate: params.serviceDate,
-                //     numberOfDays: params.numberOfDays,
-                //     displayDuration: params.displayDuration,
-                //     quoteId: params.quoteId,
-                //     roomConfigurations: params.roomConfigurations,
-                //     logistics: params.logistics,
-                //     flightDetail: params.flightDetail,
-                //     oldChargeTypes: params.oldChargeTypes,
-                //     keepRatesOnDateChange: params.keepRatesOnDateChange,
-                //     selectedOPT: params.selectedOPT,
-                //     addOns: params.addOns,
-                //     serviceInclusionNote: params.serviceInclusionNote,
-                //     serviceExclusionNote: params.serviceExclusionNote,
-                //     supplierDescription: params.supplierDescription,
-                //     serviceDescription: params.serviceDescription
-                // });
-                allResults.push(...(result || []));
-                console.log('Result from SaveQuoteLineItem:', result);
-            } catch (error) {
-                console.error(`Error saving for "${selectedHotel.hotelName}": `, error);
-                allResults.push(error.message || 'Unknown error');
+                try {
+                    console.log(`Saving Quote Line Item for "${selectedHotel.hotelName}" with params:`, params);
+                    const result = await SaveQuoteLineItem(params);
+                    allResults.push(...(result || []));
+                    console.log('Result from SaveQuoteLineItem:', result);
+                } catch (error) {
+                    console.error(`Error saving for "${selectedHotel.hotelName}": `, error);
+                    allResults.push(error.message || 'Unknown error');
+                }
             }
         }
 
         if (!groupFound) {
-            this.showToast('Warning', 'Please select one OPT per part before saving.', 'warning');
-            this.isLoading = false;
+            this.showToast('Warning', 'Please select at least one hotel per part before saving.', 'warning');
+        } else if (allResults.length === 0) {
+            this.showToast('Success', 'All selected Quote Line Items saved successfully.', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
-            if (allResults.length === 0) {
-                this.isLoading = false;
-                this.showToast('Success', 'All selected Quote Line Items saved successfully.', 'success');
-                // Delay to show the toast, then reload the page
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                this.isLoading = false;
-                this.showToast('Error', `Errors occurred: ${allResults.join(', ')} `, 'error');
-            }
+            this.showToast('Error', `Errors occurred: ${allResults.join(', ')}`, 'error');
         }
 
+        this.isLoading = false;
     }
 
     showToast(title, message, variant) {
