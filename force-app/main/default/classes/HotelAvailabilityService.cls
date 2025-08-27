@@ -242,7 +242,7 @@ return results;*/
                         hw.endDate = req.endDate;
                         hw.numberOfPersons = req.numberOfPersons;
                         hw.numberOfChildren = req.numberOfChildren;
-                        hw.availability = 'Available'; // Hardcoded for now
+                        hw.availability = 'Not Available'; // Hardcoded for now
                         hw.accountId = crmCodeToAccountMap.get(crmCode).Id;
                         hw.crmCode = crmCode;
                         hw.quoteId = req.quoteId;

@@ -1,0 +1,37 @@
+.full-width {
+  width: 100%;
+}
+.slds-table td, .slds-table th {
+  white-space: nowrap;
+}
+
+.margin-search {
+  margin-top: 22px;
+}
+
+.brand-color {
+	background-color: orange;
+}
+
+.header {
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.25rem; /* ~20px */
+  margin-bottom: 0.75rem;
+  color: #ff6600;
+}
+
+.search-btn {
+  width: 100%;
+  background-color: #ff6600; /* orange */
+  color: #fff;
+  font-size: 1rem;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  background-color: #e65c00; /* darker orange on hover */
+}
