@@ -73,66 +73,6 @@ public with sharing class HotelAvailabilityService {
 
     @InvocableMethod(label='Check Hotels Availability & Fire Single Event')
     public static List<Response> checkHotelAvailability(List<Request> requests) {
-        /*List<Response> results = new List<Response>();
-
-// ✅ Query all hotel Accounts with RecordType 'Supplier'
-Map<String, Account> hotelNameToAccountMap = new Map<String, Account>();
-for (Account acc : [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier']) {
-hotelNameToAccountMap.put(acc.Name.toLowerCase(), acc);
-}
-
-for (Request req : requests) {
-List<HotelWrapper> hotelList = new List<HotelWrapper>();
-String availabilityMsg = 'Results:\n';
-
-for (String hotelName : req.hotelNames) {
-Boolean matched = false;
-Account matchedAccount;
-
-for (String accName : hotelNameToAccountMap.keySet()) {
-if (hotelName.toLowerCase().contains(accName)) {
-matched = true;
-matchedAccount = hotelNameToAccountMap.get(accName);
-break;
-}
-}
-
-if (matched) {
-HotelWrapper hw = new HotelWrapper();
-hw.hotelName = hotelName;
-hw.startDate = req.startDate;
-hw.endDate = req.endDate;
-hw.numberOfPersons = req.numberOfPersons;
-hw.numberOfChildren = req.numberOfChildren;
-hw.availability = 'Available'; // Hardcoded for now
-hw.accountId = matchedAccount.Id;
-hw.crmCode = matchedAccount.CRM_Code__c;
-hw.quoteId = req.quoteId;
-
-hotelList.add(hw);
-availabilityMsg += 'Hotel: ' + hotelName + ' (AccountId: ' + matchedAccount.Id + ') - Available\n';
-} else {
-availabilityMsg += 'Hotel: ' + hotelName + ' - Skipped (no match)\n';
-}
-}
-
-if (!hotelList.isEmpty()) {
-// Serialize hotel list to JSON
-String hotelJson = JSON.serialize(hotelList);
-
-// Fire Platform Event once
-Hotel_Availability_Event__e evt = new Hotel_Availability_Event__e(
-Hotel_JSON__c = hotelJson
-);
-EventBus.publish(evt);
-}
-
-Response res = new Response();
-res.availabilityMessage = availabilityMsg;
-results.add(res);
-}
-
-return results;*/
 
         List<Response> results = new List<Response>();
         for (Request req : requests) {
@@ -201,16 +141,23 @@ return results;*/
             HttpResponse res = http.send(httpRequest);
             System.debug('Status: ' + res.getStatusCode());
             System.debug('Response: ' + res.getBody());
+            
+
             if (res.getStatusCode() == 200) {
                 Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
                 // hw.availability = (String) responseMap.get('availability');
+
 
                 List<Object> resultsList = (List<Object>) responseMap.get('result');
 
                 System.debug('resultsList: ' + resultsList);
 
                 for (Object result : resultsList) {
-                    if (result == null) continue;
+                  //  if (result == null) continue;
+                    if(result==null){
+                        availabilityMsg += 'Not - Available\n';
+                        continue;
+                    }
                     Map<String, Object> resultMap = (Map<String, Object>) result;
                     String optCode = (String) resultMap.get('Opt');
                     String crmCode = OptCodeToCrmCode.get(optCode);

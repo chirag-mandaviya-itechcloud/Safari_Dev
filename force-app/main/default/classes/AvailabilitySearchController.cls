@@ -1,30 +1,43 @@
 public with sharing class AvailabilitySearchController {
+
+    public class roomConfig {
+        @AuraEnabled public Integer Children;
+        @AuraEnabled public Integer Adults;
+    } 
+
     public class AvailabilityRequest {
-        @AuraEnabled public String serviceType;
-        @AuraEnabled public Date startDate;
-        @AuraEnabled public Integer durationNights;
-        @AuraEnabled public Date endDate;
-        @AuraEnabled public Integer quantityRooms;
-        @AuraEnabled public String location;
-        @AuraEnabled public String starRating;
-        @AuraEnabled public String supplierStatus;
-        @AuraEnabled public String attractions;
-        @AuraEnabled public String liveAvailability;
-        @AuraEnabled public String supplierName;
+        @AuraEnabled public String Opt;
+        @AuraEnabled public String Info;
+        @AuraEnabled public String DateFrom;
+        @AuraEnabled public String SCUqty;
+        @AuraEnabled public String ButtonName;
+        @AuraEnabled public List<roomConfig> RoomConfigs;
+        @AuraEnabled public Integer MaximumOptions;
     }
 
-    @AuraEnabled(cacheable=false)
-    public static String getOptions(AvailabilityRequest filters) {
+    public class AvailabilityWrapper {
+        @AuraEnabled public List<AvailabilityRequest> records;
+    }
+
+    @AuraEnabled
+    public static String getOptions(String reqPayload) {
+        // Wrap inside "records" array
+        // AvailabilityWrapper wrapper = new AvailabilityWrapper();
+        // wrapper.records = new List<AvailabilityRequest>{ filters };
+
+        // system.debug('filters-----' + filters);
+
+        // Convert to JSON
+        System.debug('reqPayload==>'+ reqPayload);
+        String payload = JSON.serialize(reqPayload);
+        System.debug('Payload => ' + payload);
+
         HttpRequest req = new HttpRequest();
-        // Named Credential: callout:Tourplan_API + path
-        req.setEndpoint('https://rest.synatic.com/roamdev/tourplanapi/get_opts');
+        req.setEndpoint('https://rest.synatic.com/roamdev/tourplanapi/get_opts'); 
         req.setMethod('POST');
         req.setHeader('Content-Type', 'application/json');
-        // If the real API expects parameters, add them here (example shown):
-        // req.setEndpoint('callout:Tourplan_API/roamdev/tourplanapi/get_opts'
-        //     + buildQuery(filters));
-
-        req.setTimeout(20000);
+        req.setBody(reqPayload);
+        req.setTimeout(120000);
 
         Http http = new Http();
         HTTPResponse res = http.send(req);
@@ -36,24 +49,36 @@ public with sharing class AvailabilitySearchController {
         throw new AuraHandledException('Tourplan call failed: ' + sc + ' ' + res.getStatus());
     }
 
-    // Example helper if the endpoint needs query params later
-    private static String buildQuery(AvailabilityRequest f) {
-        List<String> parts = new List<String>();
-        if (f == null) return '';
-        if (f.serviceType != null) parts.add('serviceType=' + EncodingUtil.urlEncode(f.serviceType,'UTF-8'));
-        if (f.startDate   != null) parts.add('startDate='   + String.valueOf(f.startDate));
-        if (f.durationNights != null) parts.add('duration=' + String.valueOf(f.durationNights));
-        if (f.endDate     != null) parts.add('endDate='     + String.valueOf(f.endDate));
-        if (f.quantityRooms != null) parts.add('qty='       + String.valueOf(f.quantityRooms));
-        if (f.location    != null) parts.add('location='    + EncodingUtil.urlEncode(f.location,'UTF-8'));
-        if (!parts.isEmpty()) return '?' + String.join(parts, '&');
-        return '';
+    @AuraEnabled
+    public static List<Account> getSupplier(String supplierName) {
+        String pattern = '%' + supplierName + '%';
+        List<Account> suppliers = [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier' and Name LIKE :pattern LIMIT 1];
+
+        return suppliers;
     }
 
     @AuraEnabled
-    public static List<Account> getSupplier(String supplierName) {
-        List<Account> suppliers = [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier' and Name = :supplierName LIMIT 1];
+    public static List<Opt__c> getOpts(String locationName) {
+        String pattern = '%' + locationName + '%';
+        List<Opt__c> opts = [SELECT Location__c FROM Opt__c WHERE LOC_Name__c LIKE :pattern LIMIT 1];
+        return opts;
+    }
 
-        return suppliers;
+    public class LocationOption {
+        @AuraEnabled public String label;
+        @AuraEnabled public String value;
+    }
+
+    @AuraEnabled
+    public static List<LocationOption> getLocationOptions() {
+        List<LocationOption> out = new List<LocationOption>();
+
+        for (Location__c l : [SELECT Id, Tour_Plan_Location_Name__c, LOC_Name__c FROM Location__c WHERE Is_Parent__c = false]) {
+            LocationOption o = new LocationOption();
+            o.label = l.Tour_Plan_Location_Name__c;
+            o.value = l.LOC_Name__c;
+            out.add(o);
+        }
+        return out;
     }
 }

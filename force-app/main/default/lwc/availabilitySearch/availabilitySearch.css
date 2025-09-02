@@ -1,3 +1,6 @@
+body {
+  color: black;
+}
 .full-width {
   width: 100%;
 }
@@ -10,7 +13,7 @@
 }
 
 .brand-color {
-	background-color: orange;
+	background-color: #ff6600;
 }
 
 .header {
@@ -32,6 +35,176 @@
   cursor: pointer;
 }
 
-.search-btn:hover {
+.add-button {
+  width: 100%;
+  background-color: #ff6600; /* orange */
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.disable-btn {
+  cursor: not-allowed;
+  background-color: rgb(255, 102, 0);
+}
+
+.search-btn:hover, .add-button:hover {
   background-color: #e65c00; /* darker orange on hover */
+}
+
+.form-section {
+  background-color: #e8e8e8;
+  padding: 20px 10px;
+  border-radius: 5px;
+}
+
+.result-section, .error-section {
+  background-color: #e8e8e8;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+}
+
+.add-button:disabled,
+.add-button[disabled] {
+  background-color: rgb(255, 147, 75);  /* visibly different */
+  cursor: not-allowed;
+  opacity: 0.50;
+}
+
+.table-border {
+  border: 1px solid grey;
+}
+
+.group-block {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  margin: 10px 0 16px;
+  overflow: hidden;
+}
+ 
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px;
+  background: #f6f6f6;
+  border-bottom: 1px solid #e3e3e3;
+}
+ 
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+ 
+.group-subtitle {
+  font-size: .875rem;
+  color: #555;
+}
+ 
+.badge {
+  font-size: .75rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #ff6600;
+  color: #fff;
+}
+
+.result-hadding {
+  font-size: 20px;
+  font-weight: bold;
+  margin-left: 0px;
+}
+
+/* Header bar that mirrors the screenshot layout */
+.supplier-header-row {
+  display: flex;
+  /* grid-template-columns: 2.2fr repeat(6, 1fr) 0.6fr 0.9fr; // name | six details | info | search// */
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+ 
+/* generic header cells */
+.supplier-cell {
+  padding: 10px 12px;
+  border-left: 1px solid #e6e6e6;
+  font-size: 0.95rem;
+}
+.supplier-cell:first-child {
+  border-left: none;
+}
+ 
+.supplier-name {
+  font-size: 1.05rem;
+}
+.crm-sub {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 2px;
+}
+ 
+/* “Super Preferred” / Preferred / etc. */
+.status-pill {
+  text-align: center;
+  font-weight: 600;
+}
+ 
+/* info button cell */
+.info-cell {
+  text-align: center;
+}
+ 
+/* search button on the right (orange block like screenshot) */
+.header-search-btn {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  font-weight: 600;
+  /* keep your theme orange */
+}
+ 
+/* tighten spacing between header and table */
+.group-block > .slds-scrollable_x {
+  border: 1px solid #e3e3e3;
+  border-top: none; /* attach to header bar */
+  border-radius: 0 0 4px 4px;
+}
+
+.spinner-class {
+  position: absolute;
+  content: 'Please wait';
+  width: 100%;
+  text-align: center;
+  font-weight: bold;
+}
+
+.no-results {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.no-results-title {
+  font-weight: 600;
+}
+.no-results-sub {
+  color: #666;
+  font-size: 0.9rem;
+}
+.no-results-icon {
+  --slds-c-icon-color-foreground-default: #ff6600;
 }

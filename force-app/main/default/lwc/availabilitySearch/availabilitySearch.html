@@ -1,212 +1,222 @@
 <template>
     <lightning-card>
-        <div class="header">
-            <h2>Availability Search</h2>
-        </div>
-        <div class="slds-p-horizontal_medium slds-p-vertical_small">
-            <div class="slds-grid slds-wrap slds-gutters">
-                <!-- Row 1 -->
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-combobox name="serviceType" label="Service Type" value={filters.serviceType}
-                        options={serviceTypeOptions} onchange={handleInput} required>
-                    </lightning-combobox>
-                </div>
+        <div class="form-section">
+            <div class="header">
+                <h2>Availability Search</h2>
+            </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-input type="date" name="startDate" label="Start Date" value={filters.startDate}
-                        onchange={handleInput} required>
-                    </lightning-input>
-                </div>
+            <div class="slds-p-horizontal_medium slds-p-vertical_small">
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <!-- Row 1 -->
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="serviceType" label="Service Type" value={filters.serviceType}
+                            options={serviceTypeOptions} onchange={handleInput} required>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-combobox name="durationNights" label="Duration (Nights)" value={filters.durationNights}
-                        options={durationOptions} onchange={handleInput} required>
-                    </lightning-combobox>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-input type="date" name="startDate" label="Start Date" value={filters.startDate}
+                            placeholder="Select start date" onchange={handleInput} required>
+                        </lightning-input>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-input type="date" name="endDate" label="End Date" value={filters.endDate}
-                        onchange={handleInput}>
-                    </lightning-input>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="durationNights" label="Duration (Nights)"
+                            value={filters.durationNights} options={durationOptions} onchange={handleInput} required>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-combobox name="quantityRooms" label="Quantity (Rooms)" value={filters.quantityRooms}
-                        options={roomQtyOptions} onchange={handleInput} required>
-                    </lightning-combobox>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-input type="date" name="endDate" label="End Date" value={filters.endDate}
+                            placeholder="Select end date" onchange={handleInput}>
+                        </lightning-input>
+                    </div>
 
-                <!-- Row 2 -->
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-input type="text" name="location" label="Location" value={filters.location}
-                        onchange={handleInput} required>
-                    </lightning-input>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="quantityRooms" label="Quantity (Rooms)" value={filters.quantityRooms}
+                            options={roomQtyOptions} onchange={handleInput} required>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-combobox name="starRating" label="Star Rating" value={filters.starRating}
-                        options={starOptions} onchange={handleInput}>
-                    </lightning-combobox>
-                </div>
+                    <!-- Row 2 -->
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="locationCode" label="Location" value={filters.locationCode}
+                            options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-combobox name="supplierStatus" label="Supplier Status" value={filters.supplierStatus}
-                        options={anyOptions} onchange={handleInput}>
-                    </lightning-combobox>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="starRating" label="Star Rating" value={filters.starRating}
+                            options={starOptions} onchange={handleInput}>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-input type="text" name="attractions" label="Attractions" value={filters.attractions}
-                        onchange={handleInput}>
-                    </lightning-input>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="supplierStatus" label="Supplier Status" value={filters.supplierStatus}
+                            options={anyOptions} onchange={handleInput}>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                    <lightning-combobox name="liveAvailability" label="Live Availability"
-                        value={filters.liveAvailability} options={liveAvailOptions} onchange={handleInput}>
-                    </lightning-combobox>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-input type="text" name="attractions" label="Attractions" value={filters.attractions}
+                            onchange={handleInput}>
+                        </lightning-input>
+                    </div>
 
-                <!-- Row 3 -->
-                <div class="slds-col slds-size_3-of-5">
-                    <lightning-input type="text" name="supplierName" label="Supplier Name" value={filters.supplierName}
-                        onchange={handleInput}>
-                    </lightning-input>
-                </div>
+                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <lightning-combobox name="liveAvailability" label="Live Availability"
+                            value={filters.liveAvailability} options={liveAvailOptions} onchange={handleInput}>
+                        </lightning-combobox>
+                    </div>
 
-                <div class="slds-col slds-size_2-of-5 margin-search">
-                    <!-- <lightning-button variant="brand" label="Search" onclick={handleSearch} class="full-width">
-                    </lightning-button> -->
-                    <!-- <button class="slds-button slds-button_brand slds-button_stretch brand-color"
-                        onclick={handleSearch}>
-                        Search
-                    </button> -->
-                    <button class="search-btn" onclick={handleSearch}>Search</button>
-                </div>
+                    <!-- Row 3 -->
+                    <div class="slds-col slds-size_3-of-5">
+                        <lightning-input type="text" name="supplierName" label="Supplier Name"
+                            placeholder="Supplier Name" value={filters.supplierName} onchange={handleInput}>
+                        </lightning-input>
+                    </div>
 
+                    <div class="slds-col slds-size_2-of-5 margin-search">
+                        <button class="search-btn" onclick={handleSearch}>Search</button>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <!-- Results toolbar (filters mirroring your screenshot) -->
-        <template if:true={rows.length}>
-            <div class="slds-p-around_small slds-border_top">
-                <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_x-small">
-                    <div class="slds-col slds-size_1-of-4">
-                        <lightning-input type="text" label="Supplier Name" value={toolbar.supplierName}
-                            onchange={handleToolbar}></lightning-input>
-                    </div>
-                    <div class="slds-col slds-size_1-of-4">
-                        <lightning-input type="date" label="Start Date" value={toolbar.startDate}
-                            onchange={handleToolbar}></lightning-input>
-                    </div>
-                    <div class="slds-col slds-size_1-of-4">
-                        <lightning-combobox label="Duration (Nights)" value={toolbar.duration} options={durationOptions}
-                            onchange={handleToolbar}></lightning-combobox>
-                    </div>
-                    <div class="slds-col slds-size_1-of-4">
-                        <lightning-combobox label="Quantity (Rooms)" value={toolbar.qty} options={roomQtyOptions}
-                            onchange={handleToolbar}></lightning-combobox>
-                    </div>
-                    <div class="slds-col slds-size_1-of-4">
-                        <lightning-input type="text" label="Location" value={toolbar.location}
-                            onchange={handleToolbar}></lightning-input>
-                    </div>
-                    <div class="slds-col slds-size_1-of-4">
-                        <lightning-combobox label="Supplier Status" value={toolbar.supplierStatus} options={anyOptions}
-                            onchange={handleToolbar}></lightning-combobox>
-                    </div>
-                    <div class="slds-col slds-size_1-of-4 slds-align_absolute-center">
-                        <lightning-button label="Search" onclick={handleSearch}
-                            class="slds-m-top_medium"></lightning-button>
-                    </div>
-                </div>
-
-                <!-- Results table -->
-                <div class="slds-scrollable_x">
-                    <table class="slds-table slds-table_cell-buffer slds-table_bordered">
-                        <thead>
-                            <tr>
-                                <th scope="col">
-                                    <div class="slds-truncate">Service</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Rate Category</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Rate Description</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Child Policy</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">In Cancellation</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Nett</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Sell</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Status</div>
-                                </th>
-                                <th scope="col">
-                                    <div class="slds-truncate">Add</div>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template for:each={rows} for:item="row">
-                                <tr key={row.id}>
-                                    <td data-label="Service">
-                                        <div class="slds-truncate">{row.service}</div>
-                                    </td>
-                                    <td data-label="Rate Category">
-                                        <div class="slds-truncate">{row.rateCategory}</div>
-                                    </td>
-                                    <td data-label="Rate Description">
-                                        <div class="slds-truncate">{row.rateDescription}</div>
-                                    </td>
-                                    <td data-label="Child Policy">
-                                        <div class="slds-truncate">{row.childPolicy}</div>
-                                    </td>
-                                    <td data-label="In Cancellation">
-                                        <div class="slds-truncate">{row.inCancellation}</div>
-                                    </td>
-                                    <td data-label="Nett">
-                                        <div class="slds-truncate">{row.nett}</div>
-                                    </td>
-                                    <td data-label="Sell">
-                                        <div class="slds-truncate">{row.sell}</div>
-                                    </td>
-                                    <td data-label="Status">
-                                        <div class={row.statusClass}>{row.status}</div>
-                                    </td>
-                                    <td data-label="Add">
-                                        <lightning-button label="Add" variant="neutral" onclick={handleAdd}
-                                            data-row-id={row.id} disabled={row.addDisabled}>
-                                        </lightning-button>
-                                    </td>
-                                </tr>
-                            </template>
-                            <template if:false={rows.length}>
-                                <tr>
-                                    <td colspan="9" class="slds-text-align_center slds-text-color_weak">No results</td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </template>
 
         <template if:true={loading}>
-            <div class="slds-is-relative slds-p-vertical_medium">
-                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            <lightning-spinner alternative-text="Loading" size="medium" class="spinner-class" variant="brand">
+            </lightning-spinner>
+        </template>
+
+        <!-- GROUPED RESULTS (no toolbar filters) -->
+        <template if:true={groups.length}>
+            <div class="result-section">
+                <div>
+                    <p class="result-hadding">Hotels</p>
+                </div>
+                <template for:each={groups} for:item="grp">
+                    <div key={grp.crmCode} class="group-block">
+                        <!-- Supplier header styled like the screenshot -->
+                        <div class="supplier-header-row">
+                            <div class="supplier-cell supplier-name">
+                                <strong>{grp.supplier}</strong>
+                                <div class="crm-sub">CRM: {grp.crmCode}</div>
+                            </div>
+
+                            <div class="supplier-cell">{headerCheckIn}</div>
+                            <div class="supplier-cell">{headerCheckOut}</div>
+                            <div class="supplier-cell">{headerNights}</div>
+                            <div class="supplier-cell">{headerRooms}</div>
+                            <div class="supplier-cell">{headerLocation}</div>
+
+                            <div class="supplier-cell">{headerStarRating}</div>
+
+                            <!-- <div class="supplier-cell info-cell" title="Info">
+                                <lightning-button-icon icon-name="utility:info" alternative-text="Info">
+                                </lightning-button-icon>
+                            </div> -->
+
+                            <div class="supplier-cell search-cell">
+                                <button class="search-btn header-search-btn">Search</button>
+                            </div>
+                        </div>
+
+                        <div class="slds-scrollable_x">
+                            <table
+                                class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Service</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Rate Category</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Rate Description</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Child Policy</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">In Cancellation</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Nett</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Sell</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Status</div>
+                                        </th>
+                                        <th scope="col">
+                                            <div class="slds-truncate">Add</div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={grp.items} for:item="row">
+                                        <tr key={row.id}>
+                                            <td data-label="Service">
+                                                <div class="slds-truncate">{row.service}</div>
+                                            </td>
+                                            <td data-label="Rate Category">
+                                                <div class="slds-truncate">{row.rateCategory}</div>
+                                            </td>
+                                            <td data-label="Rate Description">
+                                                <div class="slds-truncate">{row.rateDescription}</div>
+                                            </td>
+                                            <td data-label="Child Policy">
+                                                <div class="slds-truncate">{row.childPolicy}</div>
+                                            </td>
+                                            <td data-label="In Cancellation">
+                                                <div class="slds-truncate">{row.inCancellation}</div>
+                                            </td>
+                                            <td data-label="Nett">
+                                                <div class="slds-truncate">{row.nett}</div>
+                                            </td>
+                                            <td data-label="Sell">
+                                                <div class="slds-truncate">{row.sell}</div>
+                                            </td>
+                                            <td data-label="Status">
+                                                <div class={row.statusClass}>{row.status}</div>
+                                            </td>
+                                            <td data-label="Add">
+                                                <button onclick={handleAdd} data-row-id={row.id} disabled={row.addDisabled} class="add-button">
+                                                    Add
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <template if:false={grp.items.length}>
+                                        <tr>
+                                            <td colspan="9" class="slds-text-align_center slds-text-color_weak">No
+                                                options</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
             </div>
         </template>
+
+        <template if:true={showNoHotels}>
+            <div class="result-section">
+                <div class="no-results">
+                    <lightning-icon icon-name="utility:search" size="small" class="no-results-icon"></lightning-icon>
+                    <div>
+                        <div class="no-results-title">No hotels found please.</div>
+                        <div class="no-results-sub">Try different dates, rooms, location, or star rating.</div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         <template if:true={error}>
-            <div class="slds-p-around_small slds-text-color_error">{error}</div>
+            <div class="slds-p-around_small slds-text-color_error error-section">{error}</div>
         </template>
     </lightning-card>
 </template>
