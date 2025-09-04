@@ -95,15 +95,44 @@ export default class AvailabilitySearch extends LightningElement {
     handleInput = (e) => {
         const { name, value } = e.target;
         console.log(`Changed ${name} : ${value}`);
+    
+        // First, update the changed field
+        let next = { ...this.filters, [name]: value };
+    
+        // Special handling for location (you already had this)
         if (name === 'locationCode') {
             const picked = this.locationOptions.find(o => o.value === value);
-            this.filters = { ...this.filters, locationCode: value, location: picked?.label || '' };
-        } else {
-            this.filters = { ...this.filters, [name]: value };
+            next.location = picked?.label || '';
         }
-
-        this.filters = { ...this.filters, [name]: value };
+    
+        // Recompute end date when start or nights change
+        if (name === 'startDate' || name === 'durationNights') {
+            next.endDate = this.computeEndDate(next.startDate, next.durationNights);
+        }
+    
+        this.filters = next;
     };
+
+    computeEndDate(startIso, nights) {
+        if (!startIso) return '';
+        const n = parseInt(nights, 10);
+        const nightsInt = Number.isFinite(n) ? n : 0;
+    
+        // End date = start + nights + 1 day (your requirement)
+        const d = new Date(`${startIso}T00:00:00`); // anchor to midnight to avoid TZ surprises
+        d.setDate(d.getDate() + nightsInt + 1);
+    
+        return d.toISOString().slice(0, 10); // YYYY-MM-DD
+    }
+
+    get headerCheckOut() {
+        if (this.filters.endDate) return this.formatDatePretty(this.filters.endDate);
+        if (!this.filters.startDate) return '—';
+        // Fallback: compute on the fly using nights + 1
+        return this.formatDatePretty(
+            this.computeEndDate(this.filters.startDate, this.filters.durationNights)
+        );
+    }
 
     async handleSearch() {
         this.loading = true;

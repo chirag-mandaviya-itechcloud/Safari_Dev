@@ -27,8 +27,11 @@
                     </div>
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <lightning-input type="date" name="endDate" label="End Date" value={filters.endDate}
+                        <!-- <lightning-input type="date" name="endDate" label="End Date" value={filters.endDate}
                             placeholder="Select end date" onchange={handleInput}>
+                        </lightning-input> -->
+                        <lightning-input type="date" name="endDate" label="End Date (Auto)" value={filters.endDate}
+                            disabled>
                         </lightning-input>
                     </div>
 
