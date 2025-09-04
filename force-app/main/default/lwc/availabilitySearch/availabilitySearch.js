@@ -11,7 +11,7 @@ const CURRENCY = 'ZAR'; // API returns ZAR in your sample
 
 export default class AvailabilitySearch extends LightningElement {
     @track filters = {
-        serviceType: '',
+        serviceType: 'AC',
         startDate: '',
         durationNights: '1',
         endDate: '',
@@ -55,7 +55,6 @@ export default class AvailabilitySearch extends LightningElement {
     // ----- Combobox options (match the screenshot) -----
     get serviceTypeOptions() {
         return [
-            { label: 'Select', value: '' },
             { label: 'Accommodation', value: 'AC' },
             { label: 'Transfer', value: 'TF' },
             { label: 'Day Tours', value: 'DT' },
@@ -98,9 +97,9 @@ export default class AvailabilitySearch extends LightningElement {
         console.log(`Changed ${name} : ${value}`);
         if (name === 'locationCode') {
             const picked = this.locationOptions.find(o => o.value === value);
-            this.filters = {...this.filters, locationCode: value, location: picked?.label || ''};
+            this.filters = { ...this.filters, locationCode: value, location: picked?.label || '' };
         } else {
-            this.filters = {...this.filters, [name]: value};
+            this.filters = { ...this.filters, [name]: value };
         }
 
         this.filters = { ...this.filters, [name]: value };
@@ -258,8 +257,8 @@ export default class AvailabilitySearch extends LightningElement {
             status,
             roomType,
             statusClass: `slds-truncate ${status === 'Available' ? 'slds-text-color_success'
-                    : status === 'On Request' ? 'slds-text-color_warning'
-                        : 'slds-text-color_error'
+                : status === 'On Request' ? 'slds-text-color_warning'
+                    : 'slds-text-color_error'
                 }`,
             addDisabled: (status === 'Unavailable'), // disable ONLY when unavailable
             optId: optMeta.optId,
@@ -447,7 +446,7 @@ export default class AvailabilitySearch extends LightningElement {
     }
 
     get headerStarRating() {
-        const r = {'': 'Any','5 Star': '5 Star', '4 Star': '4 Star', '3 Star':'3 Star'}
+        const r = { '': 'Any', '5 Star': '5 Star', '4 Star': '4 Star', '3 Star': '3 Star' }
         return r[this.filters.starRating ?? ''] || '-';
     }
 
