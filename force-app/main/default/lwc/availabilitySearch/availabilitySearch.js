@@ -20,7 +20,7 @@ export default class AvailabilitySearch extends LightningElement {
         starRating: '',
         supplierStatus: '',
         attractions: '',
-        liveAvailability: '',
+        liveAvailability: 'OK',
         supplierName: ''
     };
 
@@ -85,31 +85,29 @@ export default class AvailabilitySearch extends LightningElement {
     }
     get liveAvailOptions() {
         return [
-            { label: 'Any', value: '' },
             { label: 'Available', value: 'OK' },
             { label: 'On Request', value: 'RQ' },
-            { label: 'Unavailable', value: 'NA' }
         ];
     }
 
     handleInput = (e) => {
         const { name, value } = e.target;
         console.log(`Changed ${name} : ${value}`);
-    
+
         // First, update the changed field
         let next = { ...this.filters, [name]: value };
-    
+
         // Special handling for location (you already had this)
         if (name === 'locationCode') {
             const picked = this.locationOptions.find(o => o.value === value);
             next.location = picked?.label || '';
         }
-    
+
         // Recompute end date when start or nights change
         if (name === 'startDate' || name === 'durationNights') {
             next.endDate = this.computeEndDate(next.startDate, next.durationNights);
         }
-    
+
         this.filters = next;
     };
 
@@ -117,11 +115,11 @@ export default class AvailabilitySearch extends LightningElement {
         if (!startIso) return '';
         const n = parseInt(nights, 10);
         const nightsInt = Number.isFinite(n) ? n : 0;
-    
+
         // End date = start + nights + 1 day (your requirement)
         const d = new Date(`${startIso}T00:00:00`); // anchor to midnight to avoid TZ surprises
         d.setDate(d.getDate() + nightsInt + 1);
-    
+
         return d.toISOString().slice(0, 10); // YYYY-MM-DD
     }
 
