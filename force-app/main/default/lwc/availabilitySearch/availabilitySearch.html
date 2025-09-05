@@ -44,8 +44,7 @@
                                 options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
                             </lightning-combobox> -->
                             <c-multi-select-picklist label="Location(s)" required="true" show-pills="true"
-                                onvaluechange={handleChangeLocation} role="cm-picklist"
-                                options={locationOptions}></c-multi-select-picklist>
+                                onvaluechange={handleChangeLocation} role="cm-picklist"></c-multi-select-picklist>
                         </div>
                     </template>
 
@@ -105,7 +104,6 @@
                         <div class="supplier-header-row">
                             <div class="supplier-cell supplier-name">
                                 <strong>{grp.supplier}</strong>
-                                <div class="crm-sub">CRM: {grp.crmCode}</div>
                             </div>
 
                             <div class="supplier-cell">{headerCheckIn}</div>

@@ -5,6 +5,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getOpts from '@salesforce/apex/AvailabilitySearchController.getOpts';
 import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
 import getLocationOptions from '@salesforce/apex/AvailabilitySearchController.getLocationOptions';
+import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedLocationsWithCodes';
 import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuoteLineItem';
 
 const CURRENCY = 'ZAR'; // API returns ZAR in your sample
@@ -152,7 +153,6 @@ export default class AvailabilitySearch extends LightningElement {
             { key: 'startDate', label: 'Start Date' },
             { key: 'durationNights', label: 'Duration (Nights)' },
             { key: 'quantityRooms', label: 'Quantity (Rooms)' },
-            // { key: 'locationCode', label: 'Location' }
         ];
         const missing = requiredFields.filter(f => !this.filters[f.key]);
         if (missing.length) {
@@ -163,34 +163,30 @@ export default class AvailabilitySearch extends LightningElement {
         }
 
         try {
-            let locationCode = this.filters.locationCode || '';
-            let crmCode = '';
-            const locationName = this.filters.location;
-            let opt = '';
 
-            // const result = await getOpts({ locationName });
-            // if (result?.length > 0) {
-            //     locationCode = result[0].Location__c;
-            // }
+            const locationData = await getSelectedLocationsWithCodes({ locationIds: this.selectedLocations.map(l => l.value) });
+            console.log('Location Data from server: ', locationData);
+            let crmCode = '';
 
             if (this.filters.supplierName) {
                 const supplierDetails = await getSupplier({ supplierName: this.filters.supplierName });
                 if (supplierDetails?.length > 0) {
                     crmCode = supplierDetails[0].CRM_Code__c;
                 }
-                opt = `${locationCode}${this.filters.serviceType}${crmCode}??????`;
-            } else {
-                opt = `${locationCode}${this.filters.serviceType}????????????`
             }
 
-            // build RoomConfigs array based on quantityRooms
-            const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
-            const roomConfigs = Array.from({ length: roomQty }, () => ({
-                RoomConfig: { Children: this.children, Adults: this.adults }
-            }));
+            const payloads = locationData.map(loc => {
+                const locationCode = loc.LOC_Name__c;
+                const opt = crmCode
+                    ? `${locationCode}${this.filters.serviceType}${crmCode}??????`
+                    : `${locationCode}${this.filters.serviceType}????????????`;
+                // build RoomConfigs array based on quantityRooms
+                const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
+                const roomConfigs = Array.from({ length: roomQty }, () => ({
+                    RoomConfig: { Children: this.children, Adults: this.adults }
+                }));
 
-            const payload = {
-                records: [{
+                return {
                     Opt: opt,
                     Info: 'GSI',
                     DateFrom: this.filters.startDate,
@@ -199,12 +195,14 @@ export default class AvailabilitySearch extends LightningElement {
                     RoomConfigs: roomConfigs,
                     MaximumOptions: 30,
                     ...(this.filters.starRating ? { ClassDescription: this.filters.starRating } : {})
-                }]
-            };
+                };
+            });
 
-            console.log('Payload : ', payload);
+            // Combine all payloads into one request if supported, else loop and merge results
+            const requestPayload = { records: payloads };
+            console.log('Payload : ', requestPayload);
 
-            const body = await getOptions({ reqPayload: JSON.stringify(payload) });
+            const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
             console.log("Response Body: ", raw);
