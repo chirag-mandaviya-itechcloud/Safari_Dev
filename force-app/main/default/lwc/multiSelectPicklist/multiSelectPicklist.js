@@ -1,13 +1,13 @@
-import { LightningElement, api} from 'lwc';
+import { LightningElement, api } from 'lwc';
 
 export default class MultiSelectPicklist extends LightningElement {
     placeholder = '';
-    showDropDown=false;
-    init = false; 
+    showDropDown = false;
+    init = false;
     isExpanded = false;
     isSelectAll = false;
 
-    @api options=[];    
+    @api options = [];
     @api label;
     @api required;
     @api showPills;
@@ -29,7 +29,7 @@ export default class MultiSelectPicklist extends LightningElement {
             document.addEventListener('click', () => {
                 this.showDropDown = false;
             });
-            this.init=true;
+            this.init = true;
         }
     }
 
@@ -41,7 +41,7 @@ export default class MultiSelectPicklist extends LightningElement {
         this.showDropDown = false;
         if (filteredopts.length > 0) {
             this.showDropDown = true;
-        }      
+        }
     }
 
     onSelect(event) {
@@ -51,24 +51,24 @@ export default class MultiSelectPicklist extends LightningElement {
             });
         } else {
             this.options.find(option => option.label === event.target.value).checked = event.target.checked;
-        } 
+        }
         this.postSelect();
     }
 
     onRemove(event) {
         this.options.find(option => option.label === event.detail.name).checked = false;
-        this.postSelect();        
+        this.postSelect();
     }
 
     postSelect() {
         let count = this.options.filter((element) => element.checked).length;
-        this.placeholder = count > 0 ? count+ ' Item(s) Selected' : '';
+        this.placeholder = count > 0 ? count + ' Item(s) Selected' : '';
         this.isSelectAll = (count == this.options.length);
         if (this.showPills) {
             let evnt = setInterval(() => {
                 if (count > 1) {
-                    if (this.template.querySelector('[role="listbox"]').getBoundingClientRect().height > 
-                        (this.template.querySelectorAll('[role="pill"]')[0].getBoundingClientRect().height+10)) {
+                    if (this.template.querySelector('[role="listbox"]').getBoundingClientRect().height >
+                        (this.template.querySelectorAll('[role="pill"]')[0].getBoundingClientRect().height + 10)) {
                         this.template.querySelector('[role="more"]').classList.remove('slds-hide');
                     } else {
                         if (this.template.querySelector('[role="more"]')) {
@@ -84,15 +84,15 @@ export default class MultiSelectPicklist extends LightningElement {
                 this.template.querySelector('.cmpl-input').setCustomValidity('Please select item(s)');
             } else {
                 this.template.querySelector('.cmpl-input').setCustomValidity('');
-            }            
+            }
             this.template.querySelector('.cmpl-input').reportValidity();
         }
 
-        const eventDetail = { 
-            options : this.options,
-            count : count
+        const eventDetail = {
+            options: this.options,
+            count: count
         };
-        const event = new CustomEvent('valuechange',  { detail: eventDetail });
+        const event = new CustomEvent('valuechange', { detail: eventDetail });
         this.dispatchEvent(event);
     }
 
@@ -143,7 +143,7 @@ export default class MultiSelectPicklist extends LightningElement {
 
     @api
     setOptions(opts) {
-        this.options = opts.map(opt => {return {"label": opt.label, "value": opt.value, "show": true, "checked":false}});
+        this.options = opts.map(opt => { return { "label": opt.label, "value": opt.value, "show": true, "checked": false } });
     }
 
     @api
@@ -154,7 +154,7 @@ export default class MultiSelectPicklist extends LightningElement {
                 this.template.querySelector('.cmpl-input').setCustomValidity('Please select item(s)');
                 this.template.querySelector('.cmpl-input').reportValidity();
                 return false;
-            }            
+            }
         }
         return true;
     }

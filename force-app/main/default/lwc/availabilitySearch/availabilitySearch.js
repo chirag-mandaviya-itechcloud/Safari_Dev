@@ -1,4 +1,4 @@
-import { LightningElement, track, api } from 'lwc';
+import { LightningElement, track, api, wire } from 'lwc';
 import getSupplier from '@salesforce/apex/AvailabilitySearchController.getSupplier';
 import getOptions from '@salesforce/apex/AvailabilitySearchController.getOptions';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
@@ -24,32 +24,49 @@ export default class AvailabilitySearch extends LightningElement {
         supplierName: ''
     };
 
+    selectedLocations = [];
+
     @api recordId;
 
     // flat rows (if you still need them) and grouped view used by UI
     @track rows = [];
     @track groups = []; // [{ crmCode, supplier, items: [...] }]
     @track locationOptions = [];
+    // @track optionsForMultiSelect = [];
     hasSearched = true;
 
-    loading = false;
+    @track loading = false;
     error;
     adults = 2;
     children = 0;
+    @track loadChild = false;
+
 
     connectedCallback() {
         this.loadLocationOptions();
     }
 
-    async loadLocationOptions() {
-        try {
-            const options = await getLocationOptions();
+    renderedCallback() {
+        var component = this.template.querySelector('[role="cm-picklist"]');
+        if (component != null && this.loadChild) {
+            component.setOptions(this.locationOptions);
+            component.setSelectedList('Other');
+        }
+    }
+
+    loadLocationOptions() {
+        this.loading = true;
+        getLocationOptions().then((options) => {
             this.locationOptions = (options || [])
                 .map(o => ({ label: o.label, value: o.value }))
-                .sort((a, b) => a.label.localeCompare(b.label)); // 👈 sort by label
-        } catch (e) {
+                .sort((a, b) => a.label.localeCompare(b.label));
+            console.log('locationOptions:', this.locationOptions);
+            this.loadChild = true;
+        }).catch((e) => {
             console.error(`${e}`);
-        }
+        }).finally(() => {
+            this.loading = false;
+        });
     }
 
     // ----- Combobox options (match the screenshot) -----
@@ -123,15 +140,6 @@ export default class AvailabilitySearch extends LightningElement {
         return d.toISOString().slice(0, 10); // YYYY-MM-DD
     }
 
-    get headerCheckOut() {
-        if (this.filters.endDate) return this.formatDatePretty(this.filters.endDate);
-        if (!this.filters.startDate) return '—';
-        // Fallback: compute on the fly using nights + 1
-        return this.formatDatePretty(
-            this.computeEndDate(this.filters.startDate, this.filters.durationNights)
-        );
-    }
-
     async handleSearch() {
         this.loading = true;
         this.error = undefined;
@@ -144,7 +152,7 @@ export default class AvailabilitySearch extends LightningElement {
             { key: 'startDate', label: 'Start Date' },
             { key: 'durationNights', label: 'Duration (Nights)' },
             { key: 'quantityRooms', label: 'Quantity (Rooms)' },
-            { key: 'locationCode', label: 'Location' }
+            // { key: 'locationCode', label: 'Location' }
         ];
         const missing = requiredFields.filter(f => !this.filters[f.key]);
         if (missing.length) {
@@ -293,6 +301,13 @@ export default class AvailabilitySearch extends LightningElement {
             rateId: stay?.RateId || '',
             crmCode
         };
+    }
+
+    handleChangeLocation(event) {
+        const selectedOptions = event.detail.options.filter(opt => opt.checked);
+        const selectedLocs = selectedOptions.map(opt => ({ value: opt.value, label: opt.label }));
+        this.selectedLocations = selectedLocs;
+        console.log('Selected locations:', selectedLocs);
     }
 
     extractCrm(optId) {
@@ -447,13 +462,12 @@ export default class AvailabilitySearch extends LightningElement {
         return this.formatDatePretty(this.filters.startDate);
     }
     get headerCheckOut() {
-        // prefer an explicit endDate, else compute start + nights
         if (this.filters.endDate) return this.formatDatePretty(this.filters.endDate);
-        if (!this.filters.startDate || !this.filters.durationNights) return '—';
-        const d = new Date(this.filters.startDate);
-        const nights = parseInt(this.filters.durationNights, 10) || 0;
-        d.setDate(d.getDate() + nights);
-        return this.formatDatePretty(d.toISOString().slice(0, 10));
+        if (!this.filters.startDate) return '—';
+        // Fallback: compute on the fly using nights + 1
+        return this.formatDatePretty(
+            this.computeEndDate(this.filters.startDate, this.filters.durationNights)
+        );
     }
     get headerNights() {
         const n = this.filters.durationNights || '0';

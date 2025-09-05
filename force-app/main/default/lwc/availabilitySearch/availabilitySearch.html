@@ -38,11 +38,17 @@
                     </div>
 
                     <!-- Row 2 -->
-                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <lightning-combobox name="locationCode" label="Location" value={filters.locationCode}
-                            options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
-                        </lightning-combobox>
-                    </div>
+                    <template if:true={loadChild}>
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                            <!-- <lightning-combobox name="locationCode" label="Location" value={filters.locationCode}
+                                options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
+                            </lightning-combobox> -->
+                            <c-multi-select-picklist label="Location(s)" required="true" show-pills="true"
+                                onvaluechange={handleChangeLocation} role="cm-picklist"
+                                options={locationOptions}></c-multi-select-picklist>
+                        </div>
+                    </template>
+
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
                         <lightning-combobox name="starRating" label="Star Rating" value={filters.starRating}
