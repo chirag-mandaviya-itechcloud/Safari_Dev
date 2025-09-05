@@ -231,7 +231,17 @@ export default class AvailabilitySearch extends LightningElement {
 
             // build flat rows and grouped view
             this.rows = this.transformApiData(raw);
-            this.groups = this.groupBySupplier(this.rows);
+            const selectedLiveAvailability = this.filters.liveAvailability;
+
+            const filteredRows = this.rows.filter(row => {
+                if (selectedLiveAvailability === 'OK') {
+                    return row.status === 'Available';
+                } else if (selectedLiveAvailability === 'RQ') {
+                    return row.status === 'On Request';
+                }
+                return true; // fallback for 'Any'
+            })
+            this.groups = this.groupBySupplier(filteredRows);
         } catch (err) {
             this.error = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
             this.rows = [];
