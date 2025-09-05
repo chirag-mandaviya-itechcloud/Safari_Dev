@@ -90,7 +90,7 @@ public with sharing class AvailabilitySearchController {
     @AuraEnabled
     public static List<LocationOption> getHotelsFromLocations(List<Id> locationIds) {
         List<LocationOption> out = new List<LocationOption>();
-        for (Account acc: [SELECT Id, Name, CRM_Code__c, TP_Location__c, TP_Location_Code__c, Location__c FROM Account  WHERE RecordType.Name = 'Supplier' AND CRM_Code__c != null]) {
+        for (Account acc: [SELECT Id, Name, CRM_Code__c, TP_Location__c, TP_Location_Code__c, Location__c FROM Account  WHERE RecordType.Name = 'Supplier' AND CRM_Code__c != null AND Location__c = :locationIds]) {
             LocationOption o = new LocationOption();
             o.label = acc.Name;
             o.value = acc.CRM_Code__c;

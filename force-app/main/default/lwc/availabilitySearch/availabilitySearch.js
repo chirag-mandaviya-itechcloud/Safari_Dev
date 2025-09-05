@@ -5,6 +5,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
 import getLocationOptions from '@salesforce/apex/AvailabilitySearchController.getLocationOptions';
 import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedLocationsWithCodes';
+import getHotelsFromLocations from '@salesforce/apex/AvailabilitySearchController.getHotelsFromLocations';
 import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuoteLineItem';
 import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassengerTypeCounts';
 
@@ -26,6 +27,8 @@ export default class AvailabilitySearch extends LightningElement {
     };
 
     selectedLocations = [];
+    selectableHotels = [];
+    selectedSuppliers = [];
 
     @api recordId;
 
@@ -41,7 +44,7 @@ export default class AvailabilitySearch extends LightningElement {
     adults = 0;
     children = 0;
     infants = 0;
-    @track loadChild = false;
+    @track loadLoc = false;
 
 
     connectedCallback() {
@@ -50,10 +53,10 @@ export default class AvailabilitySearch extends LightningElement {
     }
 
     renderedCallback() {
-        var component = this.template.querySelector('[role="cm-picklist"]');
-        if (component != null && this.loadChild) {
-            component.setOptions(this.locationOptions);
-            // component.setSelectedList('Other');
+        var locationComponent = this.template.querySelector('[role="cm-picklist"]');
+        if (locationComponent != null && this.loadLoc) {
+            locationComponent.setOptions(this.locationOptions);
+            // locationComponent.setSelectedList('Other');
         }
     }
 
@@ -64,7 +67,7 @@ export default class AvailabilitySearch extends LightningElement {
                 .map(o => ({ label: o.label, value: o.value }))
                 .sort((a, b) => a.label.localeCompare(b.label));
             console.log('locationOptions:', this.locationOptions);
-            this.loadChild = true;
+            this.loadLoc = true;
         }).catch((e) => {
             console.error(`${e}`);
         }).finally(() => {
@@ -339,6 +342,23 @@ export default class AvailabilitySearch extends LightningElement {
         const selectedLocs = selectedOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedLocations = selectedLocs;
         console.log('Selected locations:', selectedLocs);
+        this.getHotels();
+    }
+
+    async getHotels() {
+        this.selectableHotels = await getHotelsFromLocations({ locationIds: this.selectedLocations.map(l => l.value) });
+        console.log('Selectable Hotels:', this.selectableHotels);
+        var supplierComponent = this.template.querySelector('[role="cms-picklist"]');
+        if (supplierComponent != null) {
+            supplierComponent.setOptions(this.selectableHotels);
+        }
+    }
+
+    handleChangeSupplier(event) {
+        const selectedSupplierOptions = event.detail.options.filter(opt => opt.checked);
+        const selectedSup = selectedSupplierOptions.map(opt => ({ value: opt.value, label: opt.label }));
+        this.selectedSuppliers = selectedSup;
+        console.log('Selected suppliers:', selectedSup);
     }
 
     extractCrm(optId) {

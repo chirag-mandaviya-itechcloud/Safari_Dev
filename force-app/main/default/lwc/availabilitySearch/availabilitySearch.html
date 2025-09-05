@@ -38,7 +38,7 @@
                     </div>
 
                     <!-- Row 2 -->
-                    <template if:true={loadChild}>
+                    <template if:true={loadLoc}>
                         <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
                             <!-- <lightning-combobox name="locationCode" label="Location" value={filters.locationCode}
                                 options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
@@ -75,9 +75,11 @@
 
                     <!-- Row 3 -->
                     <div class="slds-col slds-size_3-of-5">
-                        <lightning-input type="text" name="supplierName" label="Supplier Name"
+                        <!-- <lightning-input type="text" name="supplierName" label="Supplier Name"
                             placeholder="Supplier Name" value={filters.supplierName} onchange={handleInput}>
-                        </lightning-input>
+                        </lightning-input> -->
+                        <c-multi-select-picklist label="Supplier(s)" show-pills="true"
+                            onvaluechange={handleChangeSupplier} role="cms-picklist"></c-multi-select-picklist>
                     </div>
 
                     <div class="slds-col slds-size_2-of-5 margin-search">
