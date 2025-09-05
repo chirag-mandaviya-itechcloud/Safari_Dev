@@ -73,10 +73,27 @@ public with sharing class AvailabilitySearchController {
     public static List<LocationOption> getLocationOptions() {
         List<LocationOption> out = new List<LocationOption>();
 
-        for (Location__c l : [SELECT Id, Tour_Plan_Location_Name__c, LOC_Name__c FROM Location__c WHERE Is_Parent__c = false]) {
+        for (Location__c l : [SELECT Id, Destination_Text__c FROM Location__c WHERE Is_Parent__c = true]) {
             LocationOption o = new LocationOption();
-            o.label = l.Tour_Plan_Location_Name__c;
-            o.value = l.LOC_Name__c;
+            o.label = l.Destination_Text__c;
+            o.value = l.Id;
+            out.add(o);
+        }
+        return out;
+    }
+
+    @AuraEnabled
+    public static List<Location__c> getSelectedLocationsWithCodes(List<Id> locationIds) {
+        return [SELECT Id, LOC_Name__c, Tour_Plan_Location_Name__c FROM Location__c WHERE Location__c = :locationIds];
+    }
+
+    @AuraEnabled
+    public static List<LocationOption> getHotelsFromLocations(List<Id> locationIds) {
+        List<LocationOption> out = new List<LocationOption>();
+        for (Account acc: [SELECT Id, Name, CRM_Code__c, TP_Location__c, TP_Location_Code__c, Location__c FROM Account  WHERE RecordType.Name = 'Supplier' AND CRM_Code__c != null]) {
+            LocationOption o = new LocationOption();
+            o.label = acc.Name;
+            o.value = acc.CRM_Code__c;
             out.add(o);
         }
         return out;
