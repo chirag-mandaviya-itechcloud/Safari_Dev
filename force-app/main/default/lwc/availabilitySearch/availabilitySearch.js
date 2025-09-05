@@ -117,8 +117,10 @@ export default class AvailabilitySearch extends LightningElement {
     get anyOptions() {
         return [
             { label: 'Any', value: '' },
+            { label: 'Super Preferred', value: 'Super Preferred' },
             { label: 'Preferred', value: 'PF' },
-            { label: 'Pre-paid / Voucher', value: 'PP' }
+            { label: 'Standard', value: 'Standard' },
+            { label: 'Blacklisted', value: 'Blacklisted' }
         ];
     }
     get liveAvailOptions() {
@@ -195,8 +197,6 @@ export default class AvailabilitySearch extends LightningElement {
         }
 
         try {
-
-
             const locationData = await getSelectedLocationsWithCodes({ locationIds: this.selectedLocations.map(l => l.value) });
             console.log('Location Data from server: ', locationData);
 
@@ -294,7 +294,7 @@ export default class AvailabilitySearch extends LightningElement {
             const desc = gen?.Description || '';
             const locality = gen?.LocalityDescription || gen?.Locality || '';
             const childPolicy = this.composeChildPolicy(gen);
-            const supplierStatus = gen?.DBAnalysisCode1 || gen?.DBAnalysisCode2 || '';
+            const supplierStatus = gen?.DBAnalysisCode1 || '';
 
             const optMeta = {
                 optId: opt?.Opt || '',
