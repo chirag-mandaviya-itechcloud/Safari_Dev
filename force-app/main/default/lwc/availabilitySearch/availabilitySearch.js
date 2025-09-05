@@ -51,7 +51,7 @@ export default class AvailabilitySearch extends LightningElement {
         var component = this.template.querySelector('[role="cm-picklist"]');
         if (component != null && this.loadChild) {
             component.setOptions(this.locationOptions);
-            component.setSelectedList('Other');
+            // component.setSelectedList('Other');
         }
     }
 
@@ -155,9 +155,15 @@ export default class AvailabilitySearch extends LightningElement {
             { key: 'quantityRooms', label: 'Quantity (Rooms)' },
         ];
         const missing = requiredFields.filter(f => !this.filters[f.key]);
-        if (missing.length) {
-            const fieldNames = missing.map(f => f.label).join(', ');
-            this.showToast('Missing Required Fields', `Please fill in: ${fieldNames}`, 'error');
+
+        let missingLocation = false;
+        if (!this.selectedLocations || this.selectedLocations.length === 0) {
+            missingLocation = true;
+        }
+        if (missing.length || missingLocation) {
+            const fieldNames = missing.map(f => f.label);
+            if (missingLocation) fieldNames.push('Location');
+            this.showToast('Missing Required Fields', `Please fill in: ${fieldNames.join(', ')}`, 'error');
             this.loading = false;
             return;
         }
