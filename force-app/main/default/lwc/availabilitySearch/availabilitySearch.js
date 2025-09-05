@@ -30,6 +30,14 @@ export default class AvailabilitySearch extends LightningElement {
     selectableHotels = [];
     selectedSuppliers = [];
     selectedSupplierCrmCodes = [];
+    selectedStarRatings = [];
+
+    starOptions = [
+        { label: 'Any', value: '' },
+        { label: '5 Star', value: '5 Star' },
+        { label: '4 Star', value: '4 Star' },
+        { label: '3 Star', value: '3 Star' }
+    ];
 
     @api recordId;
 
@@ -58,6 +66,13 @@ export default class AvailabilitySearch extends LightningElement {
         if (locationComponent != null && this.loadLoc) {
             locationComponent.setOptions(this.locationOptions);
             // locationComponent.setSelectedList('Other');
+            // locationComponent.setSelectedList(this.selectedLocations.map(l => l.label).join(';'));
+        }
+
+        var starComponent = this.template.querySelector('[role="star-picklist"]');
+        if (starComponent != null) {
+            starComponent.setOptions(this.starOptions);
+            // starComponent.setSelectedList(this.selectedStarRatings.join(';'));
         }
     }
 
@@ -106,14 +121,6 @@ export default class AvailabilitySearch extends LightningElement {
     get roomQtyOptions() {
         return Array.from({ length: 9 }, (_, i) => ({ label: String(i + 1), value: String(i + 1) }));
     }
-    get starOptions() {
-        return [
-            { label: 'Any', value: '' },
-            { label: '5 Star', value: '5 Star' },
-            { label: '4 Star', value: '4 Star' },
-            { label: '3 Star', value: '3 Star' }
-        ];
-    }
     get anyOptions() {
         return [
             { label: 'Any', value: '' },
@@ -161,12 +168,6 @@ export default class AvailabilitySearch extends LightningElement {
         d.setDate(d.getDate() + nightsInt + 1);
 
         return d.toISOString().slice(0, 10); // YYYY-MM-DD
-    }
-
-    // When transforming/filtering data
-    filterRowsBySelectedSuppliers(rows) {
-        if (!this.selectedSupplierCrmCodes || this.selectedSupplierCrmCodes.length === 0) return rows;
-        return rows.filter(row => this.selectedSupplierCrmCodes.includes(row.crmCode));
     }
 
     async handleSearch() {
@@ -225,8 +226,7 @@ export default class AvailabilitySearch extends LightningElement {
                         SCUqty: this.filters.durationNights,
                         ButtonName: 'Accommodation',
                         RoomConfigs: roomConfigs,
-                        MaximumOptions: 30,
-                        ...(this.filters.starRating ? { ClassDescription: this.filters.starRating } : {})
+                        MaximumOptions: 30
                     });
                 });
             });
@@ -255,12 +255,23 @@ export default class AvailabilitySearch extends LightningElement {
 
             let finalRows = filteredRows;
 
+            // Supplier Status filter
             if (this.filters.supplierStatus) {
                 finalRows = finalRows.filter(row => {
                     // row.supplierStatus should be set in transformApiData/mapStayToRow
                     return row.supplierStatus === this.filters.supplierStatus;
                 });
             }
+
+            // Multi-select Star Rating filter (contains logic)
+            if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
+                finalRows = finalRows.filter(row =>
+                    this.selectedStarRatings.some(selected =>
+                        row.starRating && row.starRating.toLowerCase().includes(selected.toLowerCase())
+                    )
+                );
+            }
+
             console.log('Filtered Rows:', finalRows);
 
             this.groups = this.groupBySupplier(finalRows);
@@ -295,6 +306,7 @@ export default class AvailabilitySearch extends LightningElement {
             const locality = gen?.LocalityDescription || gen?.Locality || '';
             const childPolicy = this.composeChildPolicy(gen);
             const supplierStatus = gen?.DBAnalysisCode1 || '';
+            const starRating = gen?.ClassDescription || '';
 
             const optMeta = {
                 optId: opt?.Opt || '',
@@ -305,7 +317,7 @@ export default class AvailabilitySearch extends LightningElement {
             const stays = Array.isArray(rawStay) ? rawStay : (rawStay ? [rawStay] : []);
 
             stays.forEach((stay, idx) => {
-                const row = this.mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta, supplierStatus);
+                const row = this.mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta, supplierStatus, starRating);
                 out.push({ ...row, id: `${optMeta.optionNumber || optMeta.optId}-${idx}` });
             });
         });
@@ -314,7 +326,7 @@ export default class AvailabilitySearch extends LightningElement {
         return out.map((r, i) => ({ ...r, id: String(i) }));
     }
 
-    mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }, supplierStatus) {
+    mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }, supplierStatus, starRating) {
         const availabilityCode = (stay?.Availability || '').toUpperCase();
         const statusMap = { OK: 'Available', RQ: 'On Request', NO: 'Unavailable', NA: 'Unavailable' };
         const status = statusMap[availabilityCode] || (availabilityCode || '—');
@@ -355,7 +367,8 @@ export default class AvailabilitySearch extends LightningElement {
             rateId: stay?.RateId || '',
             crmCode,
             locality,
-            supplierStatus
+            supplierStatus,
+            starRating
         };
     }
 
@@ -382,6 +395,12 @@ export default class AvailabilitySearch extends LightningElement {
         const selectedSup = selectedSupplierOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedSuppliers = selectedSup;
         console.log('Selected suppliers:', selectedSup);
+    }
+
+    handleChangeStarRating(event) {
+        const selectedOptions = event.detail.options.filter(opt => opt.checked);
+        this.selectedStarRatings = selectedOptions.map(opt => opt.value);
+        console.log('Selected star ratings:', this.selectedStarRatings);
     }
 
     extractCrm(optId) {

@@ -50,9 +50,11 @@
 
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <lightning-combobox name="starRating" label="Star Rating" value={filters.starRating}
+                        <!-- <lightning-combobox name="starRating" label="Star Rating" value={filters.starRating}
                             options={starOptions} onchange={handleInput}>
-                        </lightning-combobox>
+                        </lightning-combobox> -->
+                        <c-multi-select-picklist label="Star Rating(s)" show-pills="true"
+                            onvaluechange={handleChangeStarRating} role="star-picklist"></c-multi-select-picklist>
                     </div>
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
