@@ -29,6 +29,7 @@ export default class AvailabilitySearch extends LightningElement {
     selectedLocations = [];
     selectableHotels = [];
     selectedSuppliers = [];
+    selectedSupplierCrmCodes = [];
 
     @api recordId;
 
@@ -160,6 +161,12 @@ export default class AvailabilitySearch extends LightningElement {
         return d.toISOString().slice(0, 10); // YYYY-MM-DD
     }
 
+    // When transforming/filtering data
+    filterRowsBySelectedSuppliers(rows) {
+        if (!this.selectedSupplierCrmCodes || this.selectedSupplierCrmCodes.length === 0) return rows;
+        return rows.filter(row => this.selectedSupplierCrmCodes.includes(row.crmCode));
+    }
+
     async handleSearch() {
         this.loading = true;
         this.error = undefined;
@@ -189,38 +196,39 @@ export default class AvailabilitySearch extends LightningElement {
 
         try {
 
+
             const locationData = await getSelectedLocationsWithCodes({ locationIds: this.selectedLocations.map(l => l.value) });
             console.log('Location Data from server: ', locationData);
-            let crmCode = '';
 
-            if (this.filters.supplierName) {
-                const supplierDetails = await getSupplier({ supplierName: this.filters.supplierName });
-                if (supplierDetails?.length > 0) {
-                    crmCode = supplierDetails[0].CRM_Code__c;
-                }
-            }
-
-            const payloads = locationData.map(loc => {
+            // Build payloads for every location/hotel CRM code combination
+            let payloads = [];
+            const hotelCrmCodes = this.selectedSupplierCrmCodes && this.selectedSupplierCrmCodes.length > 0 ? this.selectedSupplierCrmCodes : [null];
+            locationData.forEach(loc => {
                 const locationCode = loc.LOC_Name__c;
-                const opt = crmCode
-                    ? `${locationCode}${this.filters.serviceType}${crmCode}??????`
-                    : `${locationCode}${this.filters.serviceType}????????????`;
-                // build RoomConfigs array based on quantityRooms
-                const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
-                const roomConfigs = Array.from({ length: roomQty }, () => ({
-                    RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
-                }));
+                hotelCrmCodes.forEach(crmCode => {
+                    let opt;
+                    if (crmCode) {
+                        opt = `${locationCode}${this.filters.serviceType}${crmCode}??????`;
+                    } else {
+                        opt = `${locationCode}${this.filters.serviceType}????????????`;
+                    }
+                    // build RoomConfigs array based on quantityRooms
+                    const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
+                    const roomConfigs = Array.from({ length: roomQty }, () => ({
+                        RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
+                    }));
 
-                return {
-                    Opt: opt,
-                    Info: 'GSI',
-                    DateFrom: this.filters.startDate,
-                    SCUqty: this.filters.durationNights,
-                    ButtonName: 'Accommodation',
-                    RoomConfigs: roomConfigs,
-                    MaximumOptions: 30,
-                    ...(this.filters.starRating ? { ClassDescription: this.filters.starRating } : {})
-                };
+                    payloads.push({
+                        Opt: opt,
+                        Info: 'GSI',
+                        DateFrom: this.filters.startDate,
+                        SCUqty: this.filters.durationNights,
+                        ButtonName: 'Accommodation',
+                        RoomConfigs: roomConfigs,
+                        MaximumOptions: 30,
+                        ...(this.filters.starRating ? { ClassDescription: this.filters.starRating } : {})
+                    });
+                });
             });
 
             // Combine all payloads into one request if supported, else loop and merge results
@@ -244,7 +252,19 @@ export default class AvailabilitySearch extends LightningElement {
                 }
                 return true; // fallback for 'Any'
             })
-            this.groups = this.groupBySupplier(filteredRows);
+
+            let finalRows = filteredRows;
+
+            if (this.filters.supplierStatus) {
+                finalRows = finalRows.filter(row => {
+                    // row.supplierStatus should be set in transformApiData/mapStayToRow
+                    return row.supplierStatus === this.filters.supplierStatus;
+                });
+            }
+            console.log('Filtered Rows:', finalRows);
+
+            this.groups = this.groupBySupplier(finalRows);
+            console.log('Groups:', this.groups);
         } catch (err) {
             this.error = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
             this.rows = [];
@@ -274,6 +294,7 @@ export default class AvailabilitySearch extends LightningElement {
             const desc = gen?.Description || '';
             const locality = gen?.LocalityDescription || gen?.Locality || '';
             const childPolicy = this.composeChildPolicy(gen);
+            const supplierStatus = gen?.DBAnalysisCode1 || gen?.DBAnalysisCode2 || '';
 
             const optMeta = {
                 optId: opt?.Opt || '',
@@ -284,7 +305,7 @@ export default class AvailabilitySearch extends LightningElement {
             const stays = Array.isArray(rawStay) ? rawStay : (rawStay ? [rawStay] : []);
 
             stays.forEach((stay, idx) => {
-                const row = this.mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta);
+                const row = this.mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta, supplierStatus);
                 out.push({ ...row, id: `${optMeta.optionNumber || optMeta.optId}-${idx}` });
             });
         });
@@ -293,7 +314,7 @@ export default class AvailabilitySearch extends LightningElement {
         return out.map((r, i) => ({ ...r, id: String(i) }));
     }
 
-    mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }) {
+    mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }, supplierStatus) {
         const availabilityCode = (stay?.Availability || '').toUpperCase();
         const statusMap = { OK: 'Available', RQ: 'On Request', NO: 'Unavailable', NA: 'Unavailable' };
         const status = statusMap[availabilityCode] || (availabilityCode || '—');
@@ -333,7 +354,8 @@ export default class AvailabilitySearch extends LightningElement {
             optionNumber: optMeta.optionNumber,
             rateId: stay?.RateId || '',
             crmCode,
-            locality
+            locality,
+            supplierStatus
         };
     }
 
@@ -356,6 +378,7 @@ export default class AvailabilitySearch extends LightningElement {
 
     handleChangeSupplier(event) {
         const selectedSupplierOptions = event.detail.options.filter(opt => opt.checked);
+        this.selectedSupplierCrmCodes = selectedSupplierOptions.map(opt => opt.value);
         const selectedSup = selectedSupplierOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedSuppliers = selectedSup;
         console.log('Selected suppliers:', selectedSup);

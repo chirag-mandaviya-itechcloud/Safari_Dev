@@ -35,7 +35,7 @@ export default class MultiSelectPicklist extends LightningElement {
 
     onSearch(event) {
         this.options.forEach(option => {
-            option.show = option.label.toLowerCase().startsWith(event.detail.value.toLowerCase());
+            option.show = option.label.toLowerCase().includes(event.detail.value.toLowerCase());
         });
         let filteredopts = this.options.filter((element) => element.show);
         this.showDropDown = false;
