@@ -2,11 +2,11 @@ import { LightningElement, track, api, wire } from 'lwc';
 import getSupplier from '@salesforce/apex/AvailabilitySearchController.getSupplier';
 import getOptions from '@salesforce/apex/AvailabilitySearchController.getOptions';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
-import getOpts from '@salesforce/apex/AvailabilitySearchController.getOpts';
 import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
 import getLocationOptions from '@salesforce/apex/AvailabilitySearchController.getLocationOptions';
 import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedLocationsWithCodes';
 import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuoteLineItem';
+import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassengerTypeCounts';
 
 const CURRENCY = 'ZAR'; // API returns ZAR in your sample
 
@@ -38,13 +38,15 @@ export default class AvailabilitySearch extends LightningElement {
 
     @track loading = false;
     error;
-    adults = 2;
+    adults = 0;
     children = 0;
+    infants = 0;
     @track loadChild = false;
 
 
     connectedCallback() {
         this.loadLocationOptions();
+        this.loadPassengerCounts();
     }
 
     renderedCallback() {
@@ -63,6 +65,20 @@ export default class AvailabilitySearch extends LightningElement {
                 .sort((a, b) => a.label.localeCompare(b.label));
             console.log('locationOptions:', this.locationOptions);
             this.loadChild = true;
+        }).catch((e) => {
+            console.error(`${e}`);
+        }).finally(() => {
+            this.loading = false;
+        });
+    }
+
+    loadPassengerCounts() {
+        this.loading = true;
+        getPassengerTypeCounts({ quoteId: this.recordId }).then((counts) => {
+            console.log('Passenger counts:', counts);
+            this.adults = counts.Adult || 0;
+            this.children = counts.Child || 0;
+            this.infants = counts.Infant || 0;
         }).catch((e) => {
             console.error(`${e}`);
         }).finally(() => {
@@ -189,7 +205,7 @@ export default class AvailabilitySearch extends LightningElement {
                 // build RoomConfigs array based on quantityRooms
                 const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
                 const roomConfigs = Array.from({ length: roomQty }, () => ({
-                    RoomConfig: { Children: this.children, Adults: this.adults }
+                    RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
                 }));
 
                 return {
