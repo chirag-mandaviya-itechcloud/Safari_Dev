@@ -303,7 +303,8 @@ export default class AvailabilitySearch extends LightningElement {
             optId: optMeta.optId,
             optionNumber: optMeta.optionNumber,
             rateId: stay?.RateId || '',
-            crmCode
+            crmCode,
+            locality
         };
     }
 
@@ -342,7 +343,8 @@ export default class AvailabilitySearch extends LightningElement {
                     const nx = Number((x.nett || '').replace(/[^\d]/g, '')) || 0;
                     const ny = Number((y.nett || '').replace(/[^\d]/g, '')) || 0;
                     return nx - ny;
-                })
+                }),
+                firstLocality: g.items.length > 0 ? g.items[0].locality : ''
             }));
 
         return groups;
