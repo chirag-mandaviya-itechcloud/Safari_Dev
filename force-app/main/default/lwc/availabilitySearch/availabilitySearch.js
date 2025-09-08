@@ -38,14 +38,14 @@ export default class AvailabilitySearch extends LightningElement {
     selectedAttractions = [];
 
     starOptions = [
-        { label: 'Any', value: '' },
+        // { label: 'Any', value: ' ' },
         { label: '5 Star', value: '5 Star' },
         { label: '4 Star', value: '4 Star' },
         { label: '3 Star', value: '3 Star' }
     ];
 
     supplierStatusOptions = [
-        { label: 'Any', value: '' },
+        // { label: 'Any', value: ' ' },
         { label: 'Super Preferred', value: 'Super Preferred' },
         { label: 'Preferred', value: 'PF' },
         { label: 'Standard', value: 'Standard' },
@@ -58,8 +58,6 @@ export default class AvailabilitySearch extends LightningElement {
     @track rows = [];
     @track groups = []; // [{ crmCode, supplier, items: [...] }]
     @track locationOptions = [];
-    // @track optionsForMultiSelect = [];
-    hasSearched = true;
 
     @track loading = false;
     error;
@@ -116,28 +114,36 @@ export default class AvailabilitySearch extends LightningElement {
         if (locationComponent != null && this.loadLoc) {
             locationComponent.setOptions(this.locationOptions);
             // locationComponent.setSelectedList('Other');
-            // locationComponent.setSelectedList(this.selectedLocations.map(l => l.label).join(';'));
+            if (this.selectedLocations.length > 0) {
+                locationComponent.setSelectedList(this.selectedLocations?.map(l => l.label).join(';'));
+            }
+
         }
 
         var starComponent = this.template.querySelector('[role="star-picklist"]');
         if (starComponent != null) {
             starComponent.setOptions(this.starOptions);
-            // starComponent.setSelectedList(this.selectedStarRatings.join(';'));
+            if (this.selectedStarRatings.length > 0) {
+                starComponent.setSelectedList(this.selectedStarRatings.join(';'));
+            }
         }
 
         var statusComponent = this.template.querySelector('[role="status-picklist"]');
         if (statusComponent != null) {
             statusComponent.setOptions(this.supplierStatusOptions);
             // Optionally preselect
-            // statusComponent.setSelectedList(this.selectedSupplierStatuses.join(';'));
+            if (this.selectedSupplierStatuses.length > 0) {
+                statusComponent.setSelectedList(this.selectedSupplierStatuses.join(';'));
+            }
         }
 
         var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
-        console.log('Attractions Options:', this.attractionsOptions);
-        if (attractionsComponent != null) {
+        if (attractionsComponent != null && this.loadAttractions) {
             attractionsComponent.setOptions(this.attractionsOptions);
             // Optionally restore preselected ones:
-            // attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
+            if (this.selectedAttractions.length > 0) {
+                attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
+            }
         }
     }
 
@@ -672,7 +678,6 @@ export default class AvailabilitySearch extends LightningElement {
         if (isNaN(d)) return '—';
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); // e.g., 1 May 2025
     }
-
 
     showToast(title, message, variant) {
         this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
