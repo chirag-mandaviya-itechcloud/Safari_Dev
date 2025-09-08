@@ -34,12 +34,22 @@ export default class AvailabilitySearch extends LightningElement {
     selectedSuppliers = [];
     selectedSupplierCrmCodes = [];
     selectedStarRatings = [];
+    selectedSupplierStatuses = [];
+    selectedAttractions = [];
 
     starOptions = [
         { label: 'Any', value: '' },
         { label: '5 Star', value: '5 Star' },
         { label: '4 Star', value: '4 Star' },
         { label: '3 Star', value: '3 Star' }
+    ];
+
+    supplierStatusOptions = [
+        { label: 'Any', value: '' },
+        { label: 'Super Preferred', value: 'Super Preferred' },
+        { label: 'Preferred', value: 'PF' },
+        { label: 'Standard', value: 'Standard' },
+        { label: 'Blacklisted', value: 'Blacklisted' }
     ];
 
     @api recordId;
@@ -57,6 +67,7 @@ export default class AvailabilitySearch extends LightningElement {
     children = 0;
     infants = 0;
     @track loadLoc = false;
+    @track loadAttractions = false;
     @track supplierRecordTypeId;
     @track attractionsOptions = [];
 
@@ -91,9 +102,10 @@ export default class AvailabilitySearch extends LightningElement {
     })
     attractionsPicklistValues({ data, error }) {
         if (data) {
-            console.log('Attractions Picklist Data:', data);
+            // console.log('Attractions Picklist Data:', data);
             this.attractionsOptions = data.values.map(v => ({ label: v.label, value: v.value }));
-            console.log('Attractions Options:', this.attractionsOptions);
+            // console.log('Attractions Options:', this.attractionsOptions);
+            this.loadAttractions = true;
         } else if (error) {
             console.error('Error fetching attractions picklist values: ', error);
         }
@@ -111,6 +123,21 @@ export default class AvailabilitySearch extends LightningElement {
         if (starComponent != null) {
             starComponent.setOptions(this.starOptions);
             // starComponent.setSelectedList(this.selectedStarRatings.join(';'));
+        }
+
+        var statusComponent = this.template.querySelector('[role="status-picklist"]');
+        if (statusComponent != null) {
+            statusComponent.setOptions(this.supplierStatusOptions);
+            // Optionally preselect
+            // statusComponent.setSelectedList(this.selectedSupplierStatuses.join(';'));
+        }
+
+        var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
+        console.log('Attractions Options:', this.attractionsOptions);
+        if (attractionsComponent != null) {
+            attractionsComponent.setOptions(this.attractionsOptions);
+            // Optionally restore preselected ones:
+            // attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
         }
     }
 
@@ -158,15 +185,6 @@ export default class AvailabilitySearch extends LightningElement {
     }
     get roomQtyOptions() {
         return Array.from({ length: 9 }, (_, i) => ({ label: String(i + 1), value: String(i + 1) }));
-    }
-    get anyOptions() {
-        return [
-            { label: 'Any', value: '' },
-            { label: 'Super Preferred', value: 'Super Preferred' },
-            { label: 'Preferred', value: 'PF' },
-            { label: 'Standard', value: 'Standard' },
-            { label: 'Blacklisted', value: 'Blacklisted' }
-        ];
     }
     get liveAvailOptions() {
         return [
@@ -297,7 +315,8 @@ export default class AvailabilitySearch extends LightningElement {
             if (this.filters.supplierStatus) {
                 finalRows = finalRows.filter(row => {
                     // row.supplierStatus should be set in transformApiData/mapStayToRow
-                    return row.supplierStatus === this.filters.supplierStatus;
+                    // return row.supplierStatus === this.filters.supplierStatus;
+                    this.selectedSupplierStatuses.includes(row.supplierStatus)
                 });
             }
 
@@ -309,6 +328,13 @@ export default class AvailabilitySearch extends LightningElement {
                     )
                 );
             }
+
+            // filter for attractions
+            // if (this.selectedAttractions && this.selectedAttractions.length > 0) {
+            //     finalRows = finalRows.filter(row =>
+            //         this.selectedAttractions.some(attr => row.attractions?.includes(attr))
+            //     );
+            // }
 
             console.log('Filtered Rows:', finalRows);
 
@@ -439,6 +465,18 @@ export default class AvailabilitySearch extends LightningElement {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedStarRatings = selectedOptions.map(opt => opt.value);
         console.log('Selected star ratings:', this.selectedStarRatings);
+    }
+
+    handleChangeSupplierStatus(event) {
+        const selectedOptions = event.detail.options.filter(opt => opt.checked);
+        this.selectedSupplierStatuses = selectedOptions.map(opt => opt.value);
+        console.log('Selected supplier statuses:', this.selectedSupplierStatuses);
+    }
+
+    handleChangeAttractions(event) {
+        const selectedOptions = event.detail.options.filter(opt => opt.checked);
+        this.selectedAttractions = selectedOptions.map(opt => opt.value);
+        console.log('Selected attractions:', this.selectedAttractions);
     }
 
     extractCrm(optId) {
@@ -614,8 +652,12 @@ export default class AvailabilitySearch extends LightningElement {
     }
     get headerSupplierStatus() {
         // human-friendly label from filter (fallback to em dash)
-        const m = { '': 'Any', PF: 'Preferred', PP: 'Pre-paid / Voucher' };
-        return m[this.filters.supplierStatus ?? ''] || '—';
+        // const m = { '': 'Any', PF: 'Preferred', PP: 'Pre-paid / Voucher' };
+        // return m[this.filters.supplierStatus ?? ''] || '—';
+        if (!this.selectedSupplierStatuses || this.selectedSupplierStatuses.length === 0) {
+            return 'Any';
+        }
+        return this.selectedSupplierStatuses.join(', ');
     }
 
     get headerStarRating() {

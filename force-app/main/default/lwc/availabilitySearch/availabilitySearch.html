@@ -58,16 +58,24 @@
                     </div>
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <lightning-combobox name="supplierStatus" label="Supplier Status" value={filters.supplierStatus}
+                        <!-- <lightning-combobox name="supplierStatus" label="Supplier Status" value={filters.supplierStatus}
                             options={anyOptions} onchange={handleInput}>
-                        </lightning-combobox>
+                        </lightning-combobox> -->
+                        <c-multi-select-picklist label="Supplier Status(es)" show-pills="true"
+                            onvaluechange={handleChangeSupplierStatus} role="status-picklist">
+                        </c-multi-select-picklist>
                     </div>
 
-                    <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <lightning-input type="text" name="attractions" label="Attractions" value={filters.attractions}
+                    <template if:true={loadAttractions}>
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                            <!-- <lightning-input type="text" name="attractions" label="Attractions" value={filters.attractions}
                             onchange={handleInput}>
-                        </lightning-input>
-                    </div>
+                        </lightning-input> -->
+                            <c-multi-select-picklist label="Attractions" show-pills="true"
+                                onvaluechange={handleChangeAttractions} role="attractions-picklist">
+                            </c-multi-select-picklist>
+                        </div>
+                    </template>
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
                         <lightning-combobox name="liveAvailability" label="Live Availability"
