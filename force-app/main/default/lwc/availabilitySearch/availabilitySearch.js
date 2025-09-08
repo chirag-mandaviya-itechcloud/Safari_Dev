@@ -1,5 +1,6 @@
 import { LightningElement, track, api, wire } from 'lwc';
-import getSupplier from '@salesforce/apex/AvailabilitySearchController.getSupplier';
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+import { getPicklistValues } from 'lightning/uiObjectInfoApi';
 import getOptions from '@salesforce/apex/AvailabilitySearchController.getOptions';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
@@ -8,6 +9,8 @@ import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchCo
 import getHotelsFromLocations from '@salesforce/apex/AvailabilitySearchController.getHotelsFromLocations';
 import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuoteLineItem';
 import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassengerTypeCounts';
+import ACCOUNT_OBJECT from '@salesforce/schema/Account';
+import ATTRACTIONS_FIELD from '@salesforce/schema/Account.Supplier_Activities_Attractions__c';
 
 const CURRENCY = 'ZAR'; // API returns ZAR in your sample
 
@@ -54,11 +57,46 @@ export default class AvailabilitySearch extends LightningElement {
     children = 0;
     infants = 0;
     @track loadLoc = false;
+    @track supplierRecordTypeId;
+    @track attractionsOptions = [];
 
 
     connectedCallback() {
         this.loadLocationOptions();
         this.loadPassengerCounts();
+    }
+
+    // 1. Get default record type Id for the object
+    @wire(getObjectInfo, { objectApiName: ACCOUNT_OBJECT })
+    accountMetadata({ data, error }) {
+        if (data) {
+            const recordTypeInfos = data.recordTypeInfos;
+            // loop through recordTypeInfos to find Supplier
+            for (let rtId in recordTypeInfos) {
+                if (recordTypeInfos[rtId].name === 'Supplier') {
+                    this.supplierRecordTypeId = rtId;
+                    break;
+                }
+            }
+            console.log('Supplier RecordTypeId:', this.supplierRecordTypeId);
+        } else if (error) {
+            console.error('Error fetching Account object info: ', error);
+        }
+    }
+
+    // 2. Get picklist values for the field and record type
+    @wire(getPicklistValues, {
+        recordTypeId: '$supplierRecordTypeId',
+        fieldApiName: ATTRACTIONS_FIELD
+    })
+    attractionsPicklistValues({ data, error }) {
+        if (data) {
+            console.log('Attractions Picklist Data:', data);
+            this.attractionsOptions = data.values.map(v => ({ label: v.label, value: v.value }));
+            console.log('Attractions Options:', this.attractionsOptions);
+        } else if (error) {
+            console.error('Error fetching attractions picklist values: ', error);
+        }
     }
 
     renderedCallback() {
