@@ -73,6 +73,7 @@ export default class AvailabilitySearch extends LightningElement {
     @track groupEdits = {};      // { [crmCode]: {startDate, durationNights, endDate, quantityRooms, starRating} }
     lastSelectedLocationCodes = []; // set after the main search
     @track starHeaderOptions = [];
+    @track selectedKeys = {}; // { [selKey]: true }
 
     connectedCallback() {
         this.loadLocationOptions();
@@ -219,6 +220,17 @@ export default class AvailabilitySearch extends LightningElement {
         ];
     }
 
+    get selectedCount() {
+        return Object.keys(this.selectedKeys).filter(k => this.selectedKeys[k]).length;
+    }
+    get hasSelection() { return this.selectedCount > 0; }
+    get disableSave() { return !this.hasSelection; }
+
+    computeSelectClass(isSelected) {
+        return `select-button${isSelected ? ' selected' : ''}`;
+    }
+
+
     handleInput = (e) => {
         const { name, value } = e.target;
         console.log(`Changed ${name} : ${value}`);
@@ -364,6 +376,11 @@ export default class AvailabilitySearch extends LightningElement {
             //     );
             // }
 
+            finalRows = finalRows.map(r => {
+                const selected = !!this.selectedKeys[r.selKey];
+                return { ...r, isSelected: selected, selectButtonClass: this.computeSelectClass(selected) };
+            });
+
             console.log('Filtered Rows:', finalRows);
 
             this.groups = this.groupBySupplier(finalRows);
@@ -433,9 +450,11 @@ export default class AvailabilitySearch extends LightningElement {
             '';
 
         const externalDescr = stay?.ExternalRateDetails?.ExtOptionDescr || '';
-
         const roomType = stay?.RoomList?.RoomType || 'TWIN AVAIL';
-        const crmCode = this.extractCrm(optMeta.optId); // 6–11 chars inclusive
+        const crmCode = this.extractCrm(optMeta.optId);
+        const rateId = stay?.RateId || '';
+        const selKey = `${optMeta.optId}#${rateId}`;   // << stable selection key
+        const selected = !!this.selectedKeys[selKey];
 
         return {
             service: `${desc} - ${supplier}${locality ? ` (${locality})` : ''}`,
@@ -452,16 +471,18 @@ export default class AvailabilitySearch extends LightningElement {
             roomType,
             statusClass: `slds-truncate ${status === 'Available' ? 'slds-text-color_success'
                 : status === 'On Request' ? 'slds-text-color_warning'
-                    : 'slds-text-color_error'
-                }`,
-            addDisabled: (status === 'Unavailable'), // disable ONLY when unavailable
+                    : 'slds-text-color_error'}`,
+            addDisabled: (status === 'Unavailable'),
             optId: optMeta.optId,
             optionNumber: optMeta.optionNumber,
-            rateId: stay?.RateId || '',
+            rateId,
             crmCode,
             locality,
             supplierStatus,
-            starRating
+            starRating,
+            selKey,
+            isSelected: selected,
+            selectButtonClass: `select-button${selected ? ' selected' : ''}`,
         };
     }
 
@@ -507,6 +528,40 @@ export default class AvailabilitySearch extends LightningElement {
         this.selectedAttractions = selectedOptions.map(opt => opt.value);
         console.log('Selected attractions:', this.selectedAttractions);
     }
+
+    handleToggleSelect = (e) => {
+        const rowKey = e.currentTarget.dataset.rowKey;
+        const next = !this.selectedKeys[rowKey];
+        this.selectedKeys = { ...this.selectedKeys, [rowKey]: next };
+        const cls = this.computeSelectClass(next);
+
+        this.rows = (this.rows || []).map(r =>
+            r.selKey === rowKey ? { ...r, isSelected: next, selectButtonClass: cls } : r
+        );
+        this.groups = (this.groups || []).map(g => ({
+            ...g,
+            items: g.items.map(it =>
+                it.selKey === rowKey ? { ...it, isSelected: next, selectButtonClass: cls } : it
+            )
+        }));
+    };
+
+    handleClearSelection = () => {
+        this.selectedKeys = {};
+        this.rows = (this.rows || []).map(r => ({
+            ...r,
+            isSelected: false,
+            selectButtonClass: this.computeSelectClass(false) // <- resets color
+        }));
+        this.groups = (this.groups || []).map(g => ({
+            ...g,
+            items: g.items.map(it => ({
+                ...it,
+                isSelected: false,
+                selectButtonClass: this.computeSelectClass(false) // <- resets color
+            }))
+        }));
+    };
 
     extractCrm(optId) {
         // example: NTYACCAB001SSTAFB -> CAB001 from positions 6..11 (0-based 5..10)
@@ -704,6 +759,136 @@ export default class AvailabilitySearch extends LightningElement {
         }
     }
 
+    handleSaveSelected = async () => {
+        // Collect selected, valid rows
+        const selected = (this.rows || []).filter(
+            r => !!this.selectedKeys[r.selKey] && !r.addDisabled
+        );
+
+        if (selected.length === 0) {
+            this.showToast('Nothing to save', 'Please select one or more options first.', 'warning');
+            return;
+        }
+
+        this.loading = true;
+
+        // Helper for button class (keeps color in sync)
+        const computeSelectClass = (isSelected) => `select-button${isSelected ? ' selected' : ''}`;
+
+        let ok = 0;
+        let fail = 0;
+        const failedMsgs = [];
+
+        try {
+            // IMPORTANT: run **sequentially** to avoid row-locks on the same Quote
+            for (const row of selected) {
+                try {
+                    // Per-hotel effective inputs (dates/rooms/nights)
+                    const eff = this.getEffectiveGroupFilters(row.crmCode);
+
+                    // Pull OPT for the row
+                    const selectedOPT = await getOptByOptCode({ optCode: row.optId });
+                    if (!selectedOPT || !selectedOPT[0]) {
+                        throw new Error(`OPT not found for ${row.optId}`);
+                    }
+
+                    // Build room configs (keep your logic)
+                    const roomQty = parseInt(eff.quantityRooms, 10) || 1;
+                    const roomConfigs = Array.from({ length: roomQty }, () => ({ children: 0, adults: 2 }));
+                    const roomConfigurations = roomConfigs.map((room, i) => ({
+                        id: i + 1,
+                        serviceType: 'Accommodation',
+                        serviceSubtype: row.roomType,
+                        adults: room.adults,
+                        children: room.children,
+                        infants: 0,
+                        passengers: room.adults + room.children + 0,
+                        quoteLineItemId: null,
+                        order: i + 1
+                    }));
+
+                    // Params per your single-add flow
+                    const params = {
+                        serviceLineItemName: row.supplier,
+                        selectedServiceType: selectedOPT[0].SRV_Name__c,
+                        selectedLocation: selectedOPT[0].LOC_Name__c,
+                        selectedSupplierName: row.supplier,
+                        selectedSupplierId: selectedOPT[0].CRM_Lookup__c,
+                        selectedServiceDetail: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
+                        selectedServiceDetailDisplayName: `${selectedOPT[0].Description__c} || ${selectedOPT[0].Comment__c}`,
+                        quoteLineItemId: 'newitem',
+                        serviceClientNotes: '',
+                        serviceReservationNumber: '',
+                        serviceSelectServiceStatus: 'Not Booked',
+                        serviceExpiryDate: '',
+                        overrideDetails: false,
+                        overridenSupplierPolicy: true,
+                        selectedPassengers: [],
+                        serviceDate: eff.startDate,                    // per-hotel date
+                        numberOfDays: String(eff.durationNights),      // per-hotel nights
+                        displayDuration: String(eff.durationNights),
+                        quoteId: this.recordId,
+                        roomConfigurations,
+                        logistics: {},
+                        flightDetail: {},
+                        oldChargeTypes: [],
+                        keepRatesOnDateChange: true,
+                        selectedOPT: selectedOPT[0].ExternalId__c,
+                        addOns: [],
+                        serviceInclusionNote: '',
+                        serviceExclusionNote: '',
+                        supplierDescription: '',
+                        serviceDescription: ''
+                    };
+
+                    const result = await SaveQuoteLineItem(params);
+                    // Your Apex returns [] on success
+                    if (Array.isArray(result) && result.length === 0) {
+                        ok += 1;
+
+                        // Deselect this row in all places
+                        const k = row.selKey;
+                        const newSel = { ...this.selectedKeys };
+                        delete newSel[k];
+                        this.selectedKeys = newSel;
+
+                        // Update flat rows
+                        this.rows = (this.rows || []).map(r =>
+                            r.selKey === k ? { ...r, isSelected: false, selectButtonClass: computeSelectClass(false) } : r
+                        );
+                        // Update grouped rows
+                        this.groups = (this.groups || []).map(g => ({
+                            ...g,
+                            items: g.items.map(it =>
+                                it.selKey === k ? { ...it, isSelected: false, selectButtonClass: computeSelectClass(false) } : it
+                            )
+                        }));
+                    } else {
+                        throw new Error(`SaveQuoteLineItem failed for ${row.supplier}`);
+                    }
+                } catch (errOne) {
+                    fail += 1;
+                    // Common parallel issue we’re avoiding: UNABLE_TO_LOCK_ROW
+                    failedMsgs.push(errOne?.body?.message || errOne?.message || 'Unknown error');
+                    // continue with next row
+                }
+            }
+
+            if (ok > 0 && fail === 0) {
+                this.showToast('Success', `Created ${ok} Quote Line Item(s).`, 'success');
+            } else if (ok > 0 && fail > 0) {
+                this.showToast('Partial success', `Created ${ok}. Failed ${fail}.`, 'warning');
+                // Optional: log the first few failure messages
+                console.warn('Failures:', failedMsgs.slice(0, 5));
+            } else {
+                this.showToast('Failed', `All ${fail} item(s) failed to save.`, 'error');
+                console.error('Failures:', failedMsgs);
+            }
+        } finally {
+            this.loading = false;
+        }
+    };
+
     // --- Pretty header values (used in the group header) ---
     get headerCheckIn() {
         return this.formatDatePretty(this.filters.startDate);
@@ -889,6 +1074,8 @@ export default class AvailabilitySearch extends LightningElement {
             if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
                 newRows = newRows.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
             }
+
+            newRows = newRows.map(r => ({ ...r, isSelected: !!this.selectedKeys[r.selKey] }));
 
             // 5) Replace ONLY this group's items; keep others intact
             const sortItems = (arr) => arr.slice().sort((x, y) => {

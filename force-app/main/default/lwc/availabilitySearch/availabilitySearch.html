@@ -110,6 +110,13 @@
                 <div>
                     <p class="result-hadding">Hotels</p>
                 </div>
+                <div class="bulk-toolbar">
+                    <span class="bulk-pill">{selectedCount} selected</span>
+                    <button class="save-btn" onclick={handleSaveSelected} disabled={disableSave}>Save</button>
+                    <template if:true={hasSelection}>
+                        <button class="clear-btn" onclick={handleClearSelection}>Clear</button>
+                    </template>
+                </div>
                 <template for:each={groups} for:item="grp">
                     <div key={grp.crmCode} class="group-block">
                         <div class="supplier-header-row">
@@ -242,10 +249,12 @@
                                             <td data-label="Status">
                                                 <div class={row.statusClass}>{row.status}</div>
                                             </td>
-                                            <td data-label="Add">
-                                                <button onclick={handleAdd} data-row-id={row.id}
-                                                    disabled={row.addDisabled} class="add-button">
-                                                    Add
+                                            <td data-label="Select">
+                                                <button onclick={handleToggleSelect} data-row-id={row.id}
+                                                    data-row-key={row.selKey} disabled={row.addDisabled}
+                                                    class={row.selectButtonClass}>
+                                                    <template if:true={row.isSelected}>Selected</template>
+                                                    <template if:false={row.isSelected}>Select</template>
                                                 </button>
                                             </td>
                                         </tr>
