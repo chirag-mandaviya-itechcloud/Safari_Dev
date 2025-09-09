@@ -98,4 +98,20 @@ public with sharing class AvailabilitySearchController {
         }
         return out;
     }
+
+    public class TravelDatesWrapper {
+        @AuraEnabled public Date startDate;
+        @AuraEnabled public Decimal durationNights;
+    }
+
+    @AuraEnabled
+    public static TravelDatesWrapper getTravelDatesFromQuote(Id quoteId) {
+        Quote q = [SELECT Id, TravelStartDate__c, Total_Nights__c FROM Quote WHERE Id = :quoteId LIMIT 1];
+
+        TravelDatesWrapper tw = new TravelDatesWrapper();
+        tw.startDate = q.TravelStartDate__c;
+        tw.durationNights = q.Total_Nights__c;
+
+        return tw;
+    }
 }

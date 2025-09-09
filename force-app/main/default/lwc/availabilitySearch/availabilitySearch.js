@@ -11,6 +11,7 @@ import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuot
 import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassengerTypeCounts';
 import ACCOUNT_OBJECT from '@salesforce/schema/Account';
 import ATTRACTIONS_FIELD from '@salesforce/schema/Account.Supplier_Activities_Attractions__c';
+import getTravelDatesFromQuote from '@salesforce/apex/AvailabilitySearchController.getTravelDatesFromQuote';
 
 const CURRENCY = 'ZAR'; // API returns ZAR in your sample
 
@@ -76,6 +77,7 @@ export default class AvailabilitySearch extends LightningElement {
     connectedCallback() {
         this.loadLocationOptions();
         this.loadPassengerCounts();
+        this.loadTravelDates();
         this.starHeaderOptions = [...(this.starOptions || [])];
     }
 
@@ -173,6 +175,20 @@ export default class AvailabilitySearch extends LightningElement {
             this.adults = counts.Adult || 0;
             this.children = counts.Child || 0;
             this.infants = counts.Infant || 0;
+        }).catch((e) => {
+            console.error(`${e}`);
+        }).finally(() => {
+            this.loading = false;
+        });
+    }
+
+    loadTravelDates() {
+        this.loading = true;
+        getTravelDatesFromQuote({ quoteId: this.recordId }).then((data) => {
+            console.log('Travel Dates from Quote:', data);
+            this.filters.startDate = data.startDate;
+            this.filters.durationNights = String(data.durationNights);
+            this.filters.endDate = this.computeEndDate(this.filters.startDate, this.filters.durationNights);
         }).catch((e) => {
             console.error(`${e}`);
         }).finally(() => {
