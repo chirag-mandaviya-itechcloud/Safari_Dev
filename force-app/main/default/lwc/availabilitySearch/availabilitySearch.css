@@ -171,11 +171,6 @@ body {
   font-size: 12px;
 }
 
-.integer-cell {
-  width: 10%;
-  font-size: 12px;
-}
-
 /* search button on the right (orange block like screenshot) */
 .header-search-btn {
   width: 100%;
@@ -249,4 +244,14 @@ body {
 .slds-table {
   position: relative;
   z-index: 1;
+}
+
+.container:hover .overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.integer-cell {
+  width: 10%;
+  font-size: 12px;
 }

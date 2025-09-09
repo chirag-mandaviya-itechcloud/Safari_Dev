@@ -219,7 +219,16 @@
                                                 <div class="slds-truncate">{row.rateCategory}</div>
                                             </td>
                                             <td data-label="Rate Description">
-                                                <div class="slds-truncate">{row.rateDescription}</div>
+                                                <div class="container">
+                                                    <div class="slds-truncate" style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: -webkit-center;">
+                                                        {row.rateDescription}
+                                                    </div>
+                                                    <div class="overlay">
+                                                        <div class="hidden-content">
+                                                            {row.rateDescription}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td data-label="Child Policy">
                                                 <div class="slds-truncate">{row.childPolicy}</div>
