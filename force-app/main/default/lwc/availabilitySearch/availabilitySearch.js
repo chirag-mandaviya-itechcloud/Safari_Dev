@@ -1,4 +1,5 @@
 import { LightningElement, track, api, wire } from 'lwc';
+import { subscribe, unsubscribe, onError, setDebugFlag, isEmpEnabled } from 'lightning/empApi';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { getPicklistValues } from 'lightning/uiObjectInfoApi';
 import getOptions from '@salesforce/apex/AvailabilitySearchController.getOptions';
@@ -29,6 +30,10 @@ export default class AvailabilitySearch extends LightningElement {
         liveAvailability: 'OK',
         supplierName: ''
     };
+
+    // ---- Platform Event wiring ----
+    channelName = '/event/Hotel_Availability_Event__e';
+    subscription = null;
 
     selectedLocations = [];
     selectableHotels = [];
@@ -80,6 +85,12 @@ export default class AvailabilitySearch extends LightningElement {
         this.loadPassengerCounts();
         this.loadTravelDates();
         this.starHeaderOptions = [...(this.starOptions || [])];
+        // Platform Event subscription
+        this.initPeSubscription();
+    }
+
+    disconnectedCallback() {
+        this.teardownPeSubscription();
     }
 
     // 1. Get default record type Id for the object
@@ -195,6 +206,138 @@ export default class AvailabilitySearch extends LightningElement {
         }).finally(() => {
             this.loading = false;
         });
+    }
+
+    initPeSubscription() {
+        try {
+            // Optional: turn on verbose logging in console
+            setDebugFlag(true);
+
+            // Listen for delivery errors
+            onError((error) => {
+                // Don’t toast — avoid noise. Log for troubleshooting.
+                // console.error('EMP API error: ', JSON.stringify(error));
+            });
+
+            // Subscribe for new events only (-1)
+            subscribe(this.channelName, -1, this.handlePeMessage).then((resp) => {
+                this.subscription = resp;
+                // console.log('Subscribed to PE channel', JSON.stringify(resp));
+            });
+            console.log('PE subscribe initiated');
+        } catch (e) {
+            // console.error('PE subscribe failed', e);
+        }
+    }
+
+    teardownPeSubscription() {
+        try {
+            if (this.subscription) {
+                unsubscribe(this.subscription, () => {
+                    // console.log('Unsubscribed from PE channel');
+                });
+                this.subscription = null;
+            }
+        } catch (e) {
+            // console.error('PE unsubscribe failed', e);
+        }
+    }
+
+    handlePeMessage = (message) => {
+        try {
+            console.log('PE message received: ', JSON.stringify(message));
+            const payload = message?.data?.payload || {};
+
+            // 1) Pull raw result JSON from the event (recommended pattern)
+            //    e.g., a Long Text Area field on the PE that the quick action fills.
+            let raw;
+            if (payload.Hotel_JSON__c) {
+                try {
+                    raw = JSON.parse(payload.Hotel_JSON__c);
+                } catch (e) {
+                    // If it isn't valid JSON, ignore this event
+                    // console.warn('Invalid Hotel_JSON__c in PE');
+                    return;
+                }
+            } else {
+                // Fallback: if your PE payload *is already* the raw object the LWC expects
+                raw = payload;
+            }
+
+            // 2) (Optional) Merge location codes provided by the event to support per-hotel search later
+            //    e.g., a Text/LongText field with a comma- or semicolon-separated list of codes.
+            // if (payload.LocationCodes__c) {
+            //     const extra = String(payload.LocationCodes__c)
+            //         .split(/[,;|\s]+/)
+            //         .map(s => s.trim())
+            //         .filter(Boolean);
+            //     if (extra.length) {
+            //         const union = new Set([...(this.lastSelectedLocationCodes || []), ...extra]);
+            //         this.lastSelectedLocationCodes = Array.from(union);
+            //     }
+            // }
+
+            console.log("Raw from PE:", raw);
+
+            // 3) Append results using the same logic as handleSearch
+            this.appendResultsFromRaw(raw);
+        } catch (e) {
+            // console.error('handlePeMessage error', e);
+        }
+    };
+
+    appendResultsFromRaw(raw) {
+        // Transform only the newly fetched results
+        const fetchedRows = this.transformApiData(raw);
+
+        // Apply top-level filters to the *new* rows
+        const live = this.filters.liveAvailability;
+        let filtered = fetchedRows.filter(r => {
+            if (live === 'OK') return r.status === 'Available';
+            if (live === 'RQ') return r.status === 'On Request';
+            return true;
+        });
+
+        if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
+            filtered = filtered.filter(row =>
+                this.selectedStarRatings.some(sel =>
+                    row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
+                )
+            );
+        }
+        if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
+            filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
+        }
+
+        // Normalize new rows: unique id + preserve selection state
+        const ts = Date.now();
+        const normalizedNew = filtered.map((r, i) => {
+            const selected = !!this.selectedKeys[r.selKey];
+            return {
+                ...r,
+                id: `${r.selKey}-${ts}-${i}`,
+                isSelected: selected,
+                selectButtonClass: this.computeSelectClass(selected),
+            };
+        });
+
+        // Merge with existing rows by selKey (skip duplicates)
+        const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
+        for (const nr of normalizedNew) {
+            if (!existingBySelKey.has(nr.selKey)) {
+                existingBySelKey.set(nr.selKey, nr);
+            }
+            // If you prefer to always replace duplicates with fresher data, use:
+            // existingBySelKey.set(nr.selKey, nr);
+        }
+        const mergedRows = Array.from(existingBySelKey.values());
+
+        // Save and regroup (append without losing existing ones)
+        this.rows = mergedRows;
+        this.groups = this.groupBySupplier(mergedRows);
+
+        // Mark "hasSearched" so your "No hotels" empty state behaves
+        this.hasSearched = true;
     }
 
     // ----- Combobox options (match the screenshot) -----
@@ -332,55 +475,57 @@ export default class AvailabilitySearch extends LightningElement {
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
+            this.appendResultsFromRaw(raw);
+
             // 3) Transform only the newly fetched results
-            const fetchedRows = this.transformApiData(raw);
+            // const fetchedRows = this.transformApiData(raw);
 
-            // 4) Apply top-level filters to the *new* rows
-            const live = this.filters.liveAvailability;
-            let filtered = fetchedRows.filter(r => {
-                if (live === 'OK') return r.status === 'Available';
-                if (live === 'RQ') return r.status === 'On Request';
-                return true;
-            });
+            // // 4) Apply top-level filters to the *new* rows
+            // const live = this.filters.liveAvailability;
+            // let filtered = fetchedRows.filter(r => {
+            //     if (live === 'OK') return r.status === 'Available';
+            //     if (live === 'RQ') return r.status === 'On Request';
+            //     return true;
+            // });
 
-            if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
-                filtered = filtered.filter(row =>
-                    this.selectedStarRatings.some(sel =>
-                        row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
-                    )
-                );
-            }
+            // if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
+            //     filtered = filtered.filter(row =>
+            //         this.selectedStarRatings.some(sel =>
+            //             row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
+            //         )
+            //     );
+            // }
 
-            if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
-                filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
-            }
+            // if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
+            //     filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
+            // }
 
-            // 5) Normalize new rows: unique id + preserve selection state
-            const ts = Date.now();
-            const normalizedNew = filtered.map((r, i) => {
-                const selected = !!this.selectedKeys[r.selKey];
-                return {
-                    ...r,
-                    id: `${r.selKey}-${ts}-${i}`,
-                    isSelected: selected,
-                    selectButtonClass: this.computeSelectClass(selected),
-                };
-            });
+            // // 5) Normalize new rows: unique id + preserve selection state
+            // const ts = Date.now();
+            // const normalizedNew = filtered.map((r, i) => {
+            //     const selected = !!this.selectedKeys[r.selKey];
+            //     return {
+            //         ...r,
+            //         id: `${r.selKey}-${ts}-${i}`,
+            //         isSelected: selected,
+            //         selectButtonClass: this.computeSelectClass(selected),
+            //     };
+            // });
 
-            // 6) Merge with existing rows by selKey (skip duplicates)
-            const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
-            for (const nr of normalizedNew) {
-                if (!existingBySelKey.has(nr.selKey)) {
-                    existingBySelKey.set(nr.selKey, nr);
-                }
-                // If you prefer to *replace* duplicates with fresher data, use:
-                // existingBySelKey.set(nr.selKey, nr);
-            }
-            const mergedRows = Array.from(existingBySelKey.values());
+            // // 6) Merge with existing rows by selKey (skip duplicates)
+            // const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
+            // for (const nr of normalizedNew) {
+            //     if (!existingBySelKey.has(nr.selKey)) {
+            //         existingBySelKey.set(nr.selKey, nr);
+            //     }
+            //     // If you prefer to *replace* duplicates with fresher data, use:
+            //     // existingBySelKey.set(nr.selKey, nr);
+            // }
+            // const mergedRows = Array.from(existingBySelKey.values());
 
-            // 7) Save and regroup (this appends new hotels without losing existing ones)
-            this.rows = mergedRows;
-            this.groups = this.groupBySupplier(mergedRows);
+            // // 7) Save and regroup (this appends new hotels without losing existing ones)
+            // this.rows = mergedRows;
+            // this.groups = this.groupBySupplier(mergedRows);
 
         } catch (err) {
             this.error = (err && err.body && err.body.message)
