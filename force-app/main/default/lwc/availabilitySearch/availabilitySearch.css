@@ -167,7 +167,7 @@ body {
 }
 
 .date-cell {
-  width: 23%;
+  width: 17%;
   font-size: 12px;
 }
 
@@ -230,7 +230,9 @@ body {
 
 /* Give the combobox a sane width so the library can position the menu “forward” */
 .header-combobox {
-  min-width: 10rem;
+  min-width: 6rem;
+  font-size: 12px;
+  margin-top: -15px;
 }
 
 /* If your group block/card or result section had hidden overflow, relax it so menus aren’t clipped */
@@ -256,6 +258,37 @@ body {
   font-size: 12px;
 }
 
-.child-policy-cell {
-  max-width: 200px;
+/* Child Policy column */
+td[data-label="Child Policy"] .slds-truncate {
+    max-width: 5vw;   /* 15% of screen width */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Rate Description column */
+td[data-label="Rate Description"] .slds-truncate {
+    max-width: 5vw;   /* 25% of screen width */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Service column */
+td[data-label="Service"] .slds-truncate {
+    max-width: 12vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Generic fallback for all table cells with truncate */
+td .slds-truncate {
+    display: inline-block; /* required for ellipsis to work in some browsers */
+    vertical-align: middle;
+}
+
+.hotelname-cell {
+  width: 20%;
+  font-size: 15px;
 }

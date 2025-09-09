@@ -135,7 +135,7 @@
                             </div>
 
                             <!-- Nights (editable per hotel) -->
-                            <div class="supplier-cell">
+                            <div class="supplier-cell integer-cell">
                                 <span class="header-suffix">Nights</span>
                                 <lightning-input type="number" name="durationNights" value={grp.uiDurationNights}
                                     min="1" max="30" step="1" data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
@@ -144,7 +144,7 @@
                             </div>
 
                             <!-- Rooms (editable per hotel) -->
-                            <div class="supplier-cell">
+                            <div class="supplier-cell integer-cell">
                                 <span class="header-suffix">Rooms</span>
                                 <lightning-input type="number" name="quantityRooms" value={grp.uiQuantityRooms} min="1"
                                     max="9" step="1" data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
@@ -153,10 +153,11 @@
                             </div>
 
                             <!-- Locality (read-only) -->
-                            <div class="supplier-cell">{grp.firstLocality}</div>
+                            <div class="supplier-cell hotelname-cell">{grp.firstLocality}</div>
 
                             <!-- Star rating (editable per hotel) -->
                             <div class="supplier-cell">
+                                <span class="header-suffix">Star Rating</span>
                                 <lightning-combobox name="starRating" value={grp.uiStarRating}
                                     options={starHeaderOptions} placeholder="Any" data-crm={grp.crmCode}
                                     onchange={handleGroupHeaderChange} dropdown-alignment="left"
@@ -219,13 +220,11 @@
                                                 <div class="slds-truncate">{row.rateCategory}</div>
                                             </td>
                                             <td data-label="Rate Description">
-                                                <div class="container">
-                                                    <div class="slds-truncate" style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: -webkit-center;">
-                                                        {row.rateDescription}
-                                                    </div>
+                                                <div class="slds-truncate" title={row.rateDescription}>
+                                                    {row.rateDescription}
                                                 </div>
                                             </td>
-                                            <td data-label="Child Policy" style="max-width: 200px;"> 
+                                            <td data-label="Child Policy">
                                                 <div class="slds-truncate" title={row.childPolicy}>
                                                     {row.childPolicy}
                                                 </div>
