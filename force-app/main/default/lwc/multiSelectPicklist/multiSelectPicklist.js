@@ -116,6 +116,30 @@ export default class MultiSelectPicklist extends LightningElement {
         }
     }
 
+   // Keep your existing imports and properties...
+
+get pillGroupClass() {
+  // collapsed by default unless expanded by user
+  return 'slds-listbox_selection-group ' + (this.isExpanded ? 'slds-listbox_expanded' : '');
+}
+
+onRemove(event) {
+  const name =
+    (event.detail && event.detail.name) ||
+    (event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.name);
+
+  if (!name) return;
+
+  const opt = this.options.find(o => o.label === name);
+  if (opt) {
+    opt.checked = false;
+    this.postSelect();
+  }
+}
+
+
+
+
     showLess() {
         if (this.template.querySelector('[role="more"]')) {
             this.template.querySelector('.slds-listbox_selection-group').classList.remove('slds-listbox_expanded');

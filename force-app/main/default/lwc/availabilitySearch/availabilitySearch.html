@@ -223,16 +223,14 @@
                                                     <div class="slds-truncate" style="white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: -webkit-center;">
                                                         {row.rateDescription}
                                                     </div>
-                                                    <div class="overlay">
-                                                        <div class="hidden-content">
-                                                            {row.rateDescription}
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </td>
-                                            <td data-label="Child Policy">
-                                                <div class="slds-truncate">{row.childPolicy}</div>
+                                            <td data-label="Child Policy" style="max-width: 200px;"> 
+                                                <div class="slds-truncate" title={row.childPolicy}>
+                                                    {row.childPolicy}
+                                                </div>
                                             </td>
+
                                             <td data-label="In Cancellation">
                                                 <div class="slds-truncate">{row.inCancellation}</div>
                                             </td>

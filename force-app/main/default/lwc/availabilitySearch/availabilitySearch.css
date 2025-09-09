@@ -255,3 +255,7 @@ body {
   width: 10%;
   font-size: 12px;
 }
+
+.child-policy-cell {
+  max-width: 200px;
+}
