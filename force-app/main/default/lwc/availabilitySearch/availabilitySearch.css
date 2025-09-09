@@ -86,7 +86,7 @@ body {
   margin: 10px 0 16px;
   overflow: hidden;
 }
- 
+
 .group-header {
   display: flex;
   justify-content: space-between;
@@ -95,19 +95,19 @@ body {
   background: #f6f6f6;
   border-bottom: 1px solid #e3e3e3;
 }
- 
+
 .group-title {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 1rem;
 }
- 
+
 .group-subtitle {
   font-size: .875rem;
   color: #555;
 }
- 
+
 .badge {
   font-size: .75rem;
   padding: 2px 6px;
@@ -134,7 +134,7 @@ body {
   overflow: hidden;
   background: #fff;
 }
- 
+
 /* generic header cells */
 .supplier-cell {
   padding: 10px 12px;
@@ -144,27 +144,32 @@ body {
 .supplier-cell:first-child {
   border-left: none;
 }
- 
+
 .supplier-name {
   font-size: 1.05rem;
+  width: 35%;
 }
 .crm-sub {
   font-size: 0.8rem;
   color: #666;
   margin-top: 2px;
 }
- 
+
 /* “Super Preferred” / Preferred / etc. */
 .status-pill {
   text-align: center;
   font-weight: 600;
 }
- 
+
 /* info button cell */
 .info-cell {
   text-align: center;
 }
- 
+
+.date-cell {
+  width: 26%;
+}
+
 /* search button on the right (orange block like screenshot) */
 .header-search-btn {
   width: 100%;
@@ -173,7 +178,7 @@ body {
   font-weight: 600;
   /* keep your theme orange */
 }
- 
+
 /* tighten spacing between header and table */
 .group-block > .slds-scrollable_x {
   border: 1px solid #e3e3e3;
@@ -207,4 +212,35 @@ body {
 }
 .no-results-icon {
   --slds-c-icon-color-foreground-default: #ff6600;
+}
+
+.header-input .slds-input {
+  padding: 0.2rem 0.5rem; height: 2rem;
+}
+.header-suffix { margin-left: 0.25rem; font-size: 0.8rem; color: var(--lwc-colorTextWeak, #706e6b); }
+.supplier-header-row .supplier-cell { align-items: center; }
+
+/* Keep the header layer above the table and allow overlays to show */
+.supplier-header-row {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+
+/* Give the combobox a sane width so the library can position the menu “forward” */
+.header-combobox {
+  min-width: 10rem;
+}
+
+/* If your group block/card or result section had hidden overflow, relax it so menus aren’t clipped */
+.group-block,
+.result-section {
+  overflow: visible;
+}
+
+/* Optional: ensure the table layer doesn’t sit above the header */
+.slds-scrollable_x,
+.slds-table {
+  position: relative;
+  z-index: 1;
 }
