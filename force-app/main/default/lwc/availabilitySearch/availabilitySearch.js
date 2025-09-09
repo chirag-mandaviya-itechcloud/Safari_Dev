@@ -262,32 +262,35 @@ export default class AvailabilitySearch extends LightningElement {
             // console.log("Raw from PE:", raw);
 
             // Append results using the same logic as handleSearch
-            this.appendResultsFromRaw(raw);
+            this.appendResultsFromRaw(raw, "Agent");
         } catch (e) {
             // console.error('handlePeMessage error', e);
         }
     };
 
-    appendResultsFromRaw(raw) {
+    appendResultsFromRaw(raw, source) {
         const fetchedRows = this.transformApiData(raw);
 
-        const live = this.filters.liveAvailability;
-        let filtered = fetchedRows.filter(r => {
-            if (live === 'OK') return r.status === 'Available';
-            if (live === 'RQ') return r.status === 'On Request';
-            return true;
-        });
+        let filtered = fetchedRows;
+        if (source === "Search") {
+            const live = this.filters.liveAvailability;
+            filtered = filtered.filter(r => {
+                if (live === 'OK') return r.status === 'Available';
+                if (live === 'RQ') return r.status === 'On Request';
+                return true;
+            });
+            if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
+                filtered = filtered.filter(row =>
+                    this.selectedStarRatings.some(sel =>
+                        row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
+                    )
+                );
+            }
+            if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
+                filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
+            }
+        }
 
-        if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
-            filtered = filtered.filter(row =>
-                this.selectedStarRatings.some(sel =>
-                    row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
-                )
-            );
-        }
-        if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
-            filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
-        }
 
         // Normalize new rows: unique id + preserve selection state
         const ts = Date.now();
@@ -608,10 +611,11 @@ export default class AvailabilitySearch extends LightningElement {
             });
 
             const requestPayload = { records: payloads };
+            console.log('Request payload:', JSON.stringify(requestPayload));
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
-            this.appendResultsFromRaw(raw);
+            this.appendResultsFromRaw(raw, "Search");
         } catch (err) {
             this.error = (err && err.body && err.body.message)
                 ? err.body.message
@@ -927,6 +931,7 @@ export default class AvailabilitySearch extends LightningElement {
                         supplierDescription: '',
                         serviceDescription: ''
                     };
+                    console.log("Saving QLI with params:", params);
 
                     const result = await SaveQuoteLineItem(params);
 
