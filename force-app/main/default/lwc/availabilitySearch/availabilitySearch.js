@@ -14,7 +14,7 @@ import ACCOUNT_OBJECT from '@salesforce/schema/Account';
 import ATTRACTIONS_FIELD from '@salesforce/schema/Account.Supplier_Activities_Attractions__c';
 import getTravelDatesFromQuote from '@salesforce/apex/AvailabilitySearchController.getTravelDatesFromQuote';
 
-const CURRENCY = 'ZAR'; // API returns ZAR in your sample
+const CURRENCY = 'ZAR';
 
 export default class AvailabilitySearch extends LightningElement {
     @track filters = {
@@ -31,7 +31,6 @@ export default class AvailabilitySearch extends LightningElement {
         supplierName: ''
     };
 
-    // ---- Platform Event wiring ----
     channelName = '/event/Hotel_Availability_Event__e';
     subscription = null;
 
@@ -60,9 +59,8 @@ export default class AvailabilitySearch extends LightningElement {
 
     @api recordId;
 
-    // flat rows (if you still need them) and grouped view used by UI
     @track rows = [];
-    @track groups = []; // [{ crmCode, supplier, items: [...] }]
+    @track groups = [];
     @track locationOptions = [];
 
     @track loading = false;
@@ -75,25 +73,32 @@ export default class AvailabilitySearch extends LightningElement {
     @track supplierRecordTypeId;
     @track attractionsOptions = [];
 
-    @track groupEdits = {};      // { [crmCode]: {startDate, durationNights, endDate, quantityRooms, starRating} }
-    lastSelectedLocationCodes = []; // set after the main search
+    @track groupEdits = {};
+    lastSelectedLocationCodes = [];
     @track starHeaderOptions = [];
-    @track selectedKeys = {}; // { [selKey]: true }
+    @track selectedKeys = {};
+
+    @track roomConfigs = [];
+    roomTypeOptions = [
+        { label: 'DOUBLE AVAIL', value: 'DOUBLE AVAIL' },
+        { label: 'TWIN AVAIL', value: 'TWIN AVAIL' },
+        { label: 'TRIPLE AVAIL', value: 'TRIPLE AVAIL' },
+    ];
+    @track validationError = '';
 
     connectedCallback() {
         this.loadLocationOptions();
         this.loadPassengerCounts();
         this.loadTravelDates();
         this.starHeaderOptions = [...(this.starOptions || [])];
-        // Platform Event subscription
         this.initPeSubscription();
+        this.syncRoomsToQuantity(this.filters.quantityRooms);
     }
 
     disconnectedCallback() {
         this.teardownPeSubscription();
     }
 
-    // 1. Get default record type Id for the object
     @wire(getObjectInfo, { objectApiName: ACCOUNT_OBJECT })
     accountMetadata({ data, error }) {
         if (data) {
@@ -111,7 +116,6 @@ export default class AvailabilitySearch extends LightningElement {
         }
     }
 
-    // 2. Get picklist values for the field and record type
     @wire(getPicklistValues, {
         recordTypeId: '$supplierRecordTypeId',
         fieldApiName: ATTRACTIONS_FIELD
@@ -131,7 +135,6 @@ export default class AvailabilitySearch extends LightningElement {
         var locationComponent = this.template.querySelector('[role="cm-picklist"]');
         if (locationComponent != null && this.loadLoc) {
             locationComponent.setOptions(this.locationOptions);
-            // locationComponent.setSelectedList('Other');
             if (this.selectedLocations.length > 0) {
                 locationComponent.setSelectedList(this.selectedLocations?.map(l => l.label).join(';'));
             }
@@ -149,7 +152,6 @@ export default class AvailabilitySearch extends LightningElement {
         var statusComponent = this.template.querySelector('[role="status-picklist"]');
         if (statusComponent != null) {
             statusComponent.setOptions(this.supplierStatusOptions);
-            // Optionally preselect
             if (this.selectedSupplierStatuses.length > 0) {
                 statusComponent.setSelectedList(this.selectedSupplierStatuses.join(';'));
             }
@@ -158,7 +160,6 @@ export default class AvailabilitySearch extends LightningElement {
         var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
         if (attractionsComponent != null && this.loadAttractions) {
             attractionsComponent.setOptions(this.attractionsOptions);
-            // Optionally restore preselected ones:
             if (this.selectedAttractions.length > 0) {
                 attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
             }
@@ -187,6 +188,7 @@ export default class AvailabilitySearch extends LightningElement {
             this.adults = counts.Adult || 0;
             this.children = counts.Child || 0;
             this.infants = counts.Infant || 0;
+            this.syncRoomsToQuantity(this.filters.quantityRooms);
         }).catch((e) => {
             console.error(`${e}`);
         }).finally(() => {
@@ -210,13 +212,10 @@ export default class AvailabilitySearch extends LightningElement {
 
     initPeSubscription() {
         try {
-            // Optional: turn on verbose logging in console
             setDebugFlag(true);
 
-            // Listen for delivery errors
             onError((error) => {
-                // Don’t toast — avoid noise. Log for troubleshooting.
-                // console.error('EMP API error: ', JSON.stringify(error));
+                console.error('EMP API error: ', JSON.stringify(error));
             });
 
             // Subscribe for new events only (-1)
@@ -224,7 +223,6 @@ export default class AvailabilitySearch extends LightningElement {
                 this.subscription = resp;
                 // console.log('Subscribed to PE channel', JSON.stringify(resp));
             });
-            console.log('PE subscribe initiated');
         } catch (e) {
             // console.error('PE subscribe failed', e);
         }
@@ -234,7 +232,7 @@ export default class AvailabilitySearch extends LightningElement {
         try {
             if (this.subscription) {
                 unsubscribe(this.subscription, () => {
-                    // console.log('Unsubscribed from PE channel');
+                    console.log('Unsubscribed from PE channel');
                 });
                 this.subscription = null;
             }
@@ -248,38 +246,22 @@ export default class AvailabilitySearch extends LightningElement {
             console.log('PE message received: ', JSON.stringify(message));
             const payload = message?.data?.payload || {};
 
-            // 1) Pull raw result JSON from the event (recommended pattern)
-            //    e.g., a Long Text Area field on the PE that the quick action fills.
+            // Pull raw result JSON from the event
             let raw;
             if (payload.Hotel_JSON__c) {
                 try {
                     raw = JSON.parse(payload.Hotel_JSON__c);
                 } catch (e) {
-                    // If it isn't valid JSON, ignore this event
-                    // console.warn('Invalid Hotel_JSON__c in PE');
+                    // if it isn't valid JSON, ignore this event
                     return;
                 }
             } else {
                 // Fallback: if your PE payload *is already* the raw object the LWC expects
                 raw = payload;
             }
+            // console.log("Raw from PE:", raw);
 
-            // 2) (Optional) Merge location codes provided by the event to support per-hotel search later
-            //    e.g., a Text/LongText field with a comma- or semicolon-separated list of codes.
-            // if (payload.LocationCodes__c) {
-            //     const extra = String(payload.LocationCodes__c)
-            //         .split(/[,;|\s]+/)
-            //         .map(s => s.trim())
-            //         .filter(Boolean);
-            //     if (extra.length) {
-            //         const union = new Set([...(this.lastSelectedLocationCodes || []), ...extra]);
-            //         this.lastSelectedLocationCodes = Array.from(union);
-            //     }
-            // }
-
-            console.log("Raw from PE:", raw);
-
-            // 3) Append results using the same logic as handleSearch
+            // Append results using the same logic as handleSearch
             this.appendResultsFromRaw(raw);
         } catch (e) {
             // console.error('handlePeMessage error', e);
@@ -287,10 +269,8 @@ export default class AvailabilitySearch extends LightningElement {
     };
 
     appendResultsFromRaw(raw) {
-        // Transform only the newly fetched results
         const fetchedRows = this.transformApiData(raw);
 
-        // Apply top-level filters to the *new* rows
         const live = this.filters.liveAvailability;
         let filtered = fetchedRows.filter(r => {
             if (live === 'OK') return r.status === 'Available';
@@ -321,26 +301,20 @@ export default class AvailabilitySearch extends LightningElement {
             };
         });
 
-        // Merge with existing rows by selKey (skip duplicates)
         const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
         for (const nr of normalizedNew) {
             if (!existingBySelKey.has(nr.selKey)) {
                 existingBySelKey.set(nr.selKey, nr);
             }
-            // If you prefer to always replace duplicates with fresher data, use:
-            // existingBySelKey.set(nr.selKey, nr);
         }
         const mergedRows = Array.from(existingBySelKey.values());
 
-        // Save and regroup (append without losing existing ones)
         this.rows = mergedRows;
         this.groups = this.groupBySupplier(mergedRows);
 
-        // Mark "hasSearched" so your "No hotels" empty state behaves
         this.hasSearched = true;
     }
 
-    // ----- Combobox options (match the screenshot) -----
     get serviceTypeOptions() {
         return [
             { label: 'Accommodation', value: 'AC' },
@@ -373,27 +347,139 @@ export default class AvailabilitySearch extends LightningElement {
         return `select-button${isSelected ? ' selected' : ''}`;
     }
 
-
     handleInput = (e) => {
         const { name, value } = e.target;
         console.log(`Changed ${name} : ${value}`);
 
-        // First, update the changed field
         let next = { ...this.filters, [name]: value };
 
-        // Special handling for location (you already had this)
         if (name === 'locationCode') {
             const picked = this.locationOptions.find(o => o.value === value);
             next.location = picked?.label || '';
         }
 
-        // Recompute end date when start or nights change
         if (name === 'startDate' || name === 'durationNights') {
             next.endDate = this.computeEndDate(next.startDate, next.durationNights);
         }
 
         this.filters = next;
+
+        if (name === 'quantityRooms') {
+            this.syncRoomsToQuantity(value);
+        }
     };
+    makeDefaultRoom(idx) {
+        return { id: idx + 1, roomType: 'DOUBLE AVAIL', adults: 0, children: 0, infants: 0, passengers: 0 };
+    }
+
+    syncRoomsToQuantity(qty) {
+        const n = Math.max(1, parseInt(qty, 10) || 1);
+        let rooms = [...(this.roomConfigs || [])];
+        const oldLen = rooms.length;
+
+        // grow/shrink
+        if (oldLen < n) {
+            for (let i = oldLen; i < n; i++) rooms.push(this.makeDefaultRoom(i));
+        } else if (oldLen > n) {
+            rooms = rooms.slice(0, n);
+        }
+
+        const allZero = rooms.every(r =>
+            ((+r.adults || 0) + (+r.children || 0) + (+r.infants || 0)) === 0
+        );
+        if (allZero) {
+            const split = (total) => {
+                total = parseInt(total) || 0;
+                const base = Math.floor(total / n);
+                const rem = total % n;
+                return Array.from({ length: n }, (_, i) => base + (i < rem ? 1 : 0));
+            };
+            const ad = split(this.adults);
+            const ch = split(this.children);
+            const inf = split(this.infants);
+            rooms = rooms.map((r, i) => ({
+                ...r,
+                adults: ad[i],
+                children: ch[i],
+                infants: inf[i]
+            }));
+        }
+
+        this.roomConfigs = rooms.map((r, i) => ({
+            ...r,
+            id: i + 1,
+            passengers: (parseInt(r.adults) || 0) + (parseInt(r.children) || 0) + (parseInt(r.infants) || 0)
+        }));
+        this.validationError = '';
+    }
+
+    handleRoomChange = (e) => {
+        const idx = Number(e.currentTarget.dataset.index);
+        const { name, value } = e.target;
+
+        const rooms = [...this.roomConfigs];
+        const before = rooms[idx];
+        const next = { ...before };
+
+        if (name === 'roomType') {
+            next.roomType = value;
+        } else {
+            const v = Math.max(0, parseInt(value, 10) || 0);
+            next[name] = v;
+        }
+        next.passengers = (+next.adults || 0) + (+next.children || 0) + (+next.infants || 0);
+
+        const proposed = [...rooms];
+        proposed[idx] = next;
+
+        const s = this.sumRooms(proposed);
+        let msg = '';
+        if (s.adults > (this.adults || 0)) msg = '* You have exceeded the allowed number of Adult passengers.';
+        else if (s.children > (this.children || 0)) msg = '* You have exceeded the allowed number of Child passengers.';
+        else if (s.infants > (this.infants || 0)) msg = '* You have exceeded the allowed number of Infant passengers.';
+
+        if (msg) {
+            this.validationError = msg;
+            this.roomConfigs = rooms;
+            return;
+        }
+
+        this.validationError = '';
+        rooms[idx] = next;
+        this.roomConfigs = rooms;
+    };
+
+    buildApiRoomConfigs() {
+        const qty = parseInt(this.filters.quantityRooms, 10) || 1;
+        this.syncRoomsToQuantity(qty);
+
+        return (this.roomConfigs || []).map(r => ({
+            RoomConfig: {
+                Adults: parseInt(r.adults) || 0,
+                Children: parseInt(r.children) || 0,
+                Infants: parseInt(r.infants) || 0
+            }
+        }));
+    }
+
+    buildQliRoomConfigurations(defaultRow) {
+        return (this.roomConfigs || []).map((rc, i) => {
+            const a = parseInt(rc.adults) || 0;
+            const c = parseInt(rc.children) || 0;
+            const inf = parseInt(rc.infants) || 0;
+            return {
+                id: i + 1,
+                serviceType: 'Accommodation',
+                serviceSubtype: rc.roomType || defaultRow?.roomType || 'TWIN AVAIL',
+                adults: a,
+                children: c,
+                infants: inf,
+                passengers: a + c + inf,
+                quoteLineItemId: null,
+                order: i + 1
+            };
+        });
+    }
 
     computeEndDate(startIso, nights) {
         if (!startIso) return '';
@@ -407,11 +493,62 @@ export default class AvailabilitySearch extends LightningElement {
         return d.toISOString().slice(0, 10); // YYYY-MM-DD
     }
 
+    sumRooms(rooms = this.roomConfigs) {
+        return rooms.reduce((a, r) => {
+            a.adults += parseInt(r.adults) || 0;
+            a.children += parseInt(r.children) || 0;
+            a.infants += parseInt(r.infants) || 0;
+            return a;
+        }, { adults: 0, children: 0, infants: 0 });
+    }
+
+    validateRoomTotals(rooms = this.roomConfigs) {
+        const s = this.sumRooms(rooms);
+        if (s.adults > (this.adults || 0)) {
+            this.showToast('Too many adults',
+                `You entered ${s.adults}, but the quote has ${this.adults} adult${this.adults === 1 ? '' : 's'}.`,
+                'error');
+            return false;
+        }
+        if (s.children > (this.children || 0)) {
+            this.showToast('Too many children',
+                `You entered ${s.children}, but the quote has ${this.children} ${this.children === 1 ? 'child' : 'children'}.`,
+                'error');
+            return false;
+        }
+        if (s.infants > (this.infants || 0)) {
+            this.showToast('Too many infants',
+                `You entered ${s.infants}, but the quote has ${this.infants} infant${this.infants === 1 ? '' : 's'}.`,
+                'error');
+            return false;
+        }
+        return true;
+    }
+
+    validateRoomTotalsExact(rooms = this.roomConfigs) {
+        const s = this.sumRooms(rooms);
+        const mismatch =
+            s.adults !== (this.adults || 0) ||
+            s.children !== (this.children || 0) ||
+            s.infants !== (this.infants || 0);
+
+        if (mismatch) {
+            this.showToast(
+                'Room totals must match quote',
+                `Entered A/C/I = ${s.adults}/${s.children}/${s.infants}; ` +
+                `Quote A/C/I = ${this.adults}/${this.children}/${this.infants}.`,
+                'error'
+            );
+            return false;
+        }
+        return true;
+    }
+
     async handleSearch() {
         this.loading = true;
         this.error = undefined;
 
-        // ---- Required field validation ----
+        // Required field validation
         const requiredFields = [
             { key: 'serviceType', label: 'Service Type' },
             { key: 'startDate', label: 'Start Date' },
@@ -429,18 +566,20 @@ export default class AvailabilitySearch extends LightningElement {
             return;
         }
 
+        if (!this.validateRoomTotalsExact()) {
+            this.loading = false;
+            return;
+        }
+
         try {
-            // 1) Resolve location codes for *this* search
             const locationData = await getSelectedLocationsWithCodes({
                 locationIds: this.selectedLocations.map(l => l.value),
             });
             const newLocCodes = (locationData || []).map(l => l.LOC_Name__c);
 
-            // Keep a union with any previously searched locations
             const locUnion = new Set([...(this.lastSelectedLocationCodes || []), ...newLocCodes]);
             this.lastSelectedLocationCodes = Array.from(locUnion);
 
-            // 2) Build payloads
             const payloads = [];
             const hotelCrmCodes =
                 (this.selectedSupplierCrmCodes && this.selectedSupplierCrmCodes.length > 0)
@@ -454,10 +593,7 @@ export default class AvailabilitySearch extends LightningElement {
                         ? `${locationCode}${this.filters.serviceType}${crmCode}??????`
                         : `${locationCode}${this.filters.serviceType}????????????`;
 
-                    const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
-                    const roomConfigs = Array.from({ length: roomQty }, () => ({
-                        RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
-                    }));
+                    const roomConfigs = this.buildApiRoomConfigs();
 
                     payloads.push({
                         Opt: opt,
@@ -476,57 +612,6 @@ export default class AvailabilitySearch extends LightningElement {
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
             this.appendResultsFromRaw(raw);
-
-            // 3) Transform only the newly fetched results
-            // const fetchedRows = this.transformApiData(raw);
-
-            // // 4) Apply top-level filters to the *new* rows
-            // const live = this.filters.liveAvailability;
-            // let filtered = fetchedRows.filter(r => {
-            //     if (live === 'OK') return r.status === 'Available';
-            //     if (live === 'RQ') return r.status === 'On Request';
-            //     return true;
-            // });
-
-            // if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
-            //     filtered = filtered.filter(row =>
-            //         this.selectedStarRatings.some(sel =>
-            //             row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
-            //         )
-            //     );
-            // }
-
-            // if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
-            //     filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
-            // }
-
-            // // 5) Normalize new rows: unique id + preserve selection state
-            // const ts = Date.now();
-            // const normalizedNew = filtered.map((r, i) => {
-            //     const selected = !!this.selectedKeys[r.selKey];
-            //     return {
-            //         ...r,
-            //         id: `${r.selKey}-${ts}-${i}`,
-            //         isSelected: selected,
-            //         selectButtonClass: this.computeSelectClass(selected),
-            //     };
-            // });
-
-            // // 6) Merge with existing rows by selKey (skip duplicates)
-            // const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
-            // for (const nr of normalizedNew) {
-            //     if (!existingBySelKey.has(nr.selKey)) {
-            //         existingBySelKey.set(nr.selKey, nr);
-            //     }
-            //     // If you prefer to *replace* duplicates with fresher data, use:
-            //     // existingBySelKey.set(nr.selKey, nr);
-            // }
-            // const mergedRows = Array.from(existingBySelKey.values());
-
-            // // 7) Save and regroup (this appends new hotels without losing existing ones)
-            // this.rows = mergedRows;
-            // this.groups = this.groupBySupplier(mergedRows);
-
         } catch (err) {
             this.error = (err && err.body && err.body.message)
                 ? err.body.message
@@ -540,7 +625,6 @@ export default class AvailabilitySearch extends LightningElement {
     transformApiData(apiPayload) {
         const payload = (typeof apiPayload === 'string') ? JSON.parse(apiPayload) : apiPayload;
 
-        // Extract the array of option objects regardless of nesting style
         let options = [];
         if (Array.isArray(payload?.result)) {
             options = payload.result.flatMap(x => Array.isArray(x) ? x : [x]);
@@ -573,8 +657,6 @@ export default class AvailabilitySearch extends LightningElement {
             });
         });
 
-        // stable numeric ids if you prefer
-        // return out.map((r, i) => ({ ...r, id: String(i) }));
         return out;
     }
 
@@ -693,14 +775,14 @@ export default class AvailabilitySearch extends LightningElement {
         this.rows = (this.rows || []).map(r => ({
             ...r,
             isSelected: false,
-            selectButtonClass: this.computeSelectClass(false) // <- resets color
+            selectButtonClass: this.computeSelectClass(false)
         }));
         this.groups = (this.groups || []).map(g => ({
             ...g,
             items: g.items.map(it => ({
                 ...it,
                 isSelected: false,
-                selectButtonClass: this.computeSelectClass(false) // <- resets color
+                selectButtonClass: this.computeSelectClass(false)
             }))
         }));
     };
@@ -711,34 +793,6 @@ export default class AvailabilitySearch extends LightningElement {
         return optId.substring(5, 11);
     }
 
-    // groupBySupplier(rows) {
-    //     // Group on CRM code; carry first supplier name seen
-    //     const map = new Map();
-    //     rows.forEach(r => {
-    //         const key = r.crmCode || '—';
-    //         if (!map.has(key)) {
-    //             map.set(key, { crmCode: key, supplier: r.supplier || '—', items: [] });
-    //         }
-    //         map.get(key).items.push(r);
-    //     });
-
-    //     // sort suppliers alphabetically; inside, sort by status then nett ascending
-    //     const groups = Array.from(map.values())
-    //         .sort((a, b) => a.supplier.localeCompare(b.supplier))
-    //         .map(g => ({
-    //             ...g,
-    //             items: g.items.slice().sort((x, y) => {
-    //                 const s = (x.status || '').localeCompare(y.status || '');
-    //                 if (s !== 0) return s;
-    //                 const nx = Number((x.nett || '').replace(/[^\d]/g, '')) || 0;
-    //                 const ny = Number((y.nett || '').replace(/[^\d]/g, '')) || 0;
-    //                 return nx - ny;
-    //             }),
-    //             firstLocality: g.items.length > 0 ? g.items[0].locality : ''
-    //         }));
-
-    //     return groups;
-    // }
     groupBySupplier(rows) {
         const map = new Map();
         rows.forEach(r => {
@@ -757,7 +811,6 @@ export default class AvailabilitySearch extends LightningElement {
             return nx - ny;
         });
 
-        // Build a quick map of previous loading states to preserve them
         const prevLoading = new Map((this.groups || []).map(g => [g.crmCode, !!g.loading]));
 
         const groups = Array.from(map.values())
@@ -768,13 +821,11 @@ export default class AvailabilitySearch extends LightningElement {
                     ...g,
                     items: sortItems(g.items),
                     firstLocality: g.items.length > 0 ? g.items[0].locality : '',
-                    // per-hotel UI fields (keep if you already added them)
                     uiStartDate: eff.startDate || '',
                     uiEndDate: (eff.endDate || this.computeEndDate(eff.startDate, eff.durationNights)) || '',
                     uiDurationNights: String(eff.durationNights || '1'),
                     uiQuantityRooms: String(eff.quantityRooms || '1'),
                     uiStarRating: (this.groupEdits[g.crmCode]?.starRating ?? eff.starRating ?? ''),
-                    // loading flag lives on each group
                     loading: prevLoading.get(g.crmCode) || false,
                 };
             });
@@ -810,7 +861,7 @@ export default class AvailabilitySearch extends LightningElement {
         if (amount == null || amount === '') return '';
         const n = Number(amount);
         if (!Number.isFinite(n)) return '';
-        const val = n / 100; // sample shows cents
+        const val = n / 100;
         return `${CURRENCY}${val.toLocaleString()}`;
     }
 
@@ -827,27 +878,13 @@ export default class AvailabilitySearch extends LightningElement {
         if (!row) return;
 
         this.loading = true;
-        // pull OPT record for create QuoteLineItem
         const selectedOPT = await getOptByOptCode({ optCode: row.optId });
 
-        // build RoomConfigs array based on quantityRooms
-        const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
-        const roomConfigs = Array.from({ length: roomQty }, () => ({
-            children: 0,
-            adults: 2
-        }));
+        if (!this.validateRoomTotalsExact()) {
+            this.loading = false; return;
+        }
 
-        const roomConfigurations = roomConfigs.map((room, i) => ({
-            id: i + 1,
-            serviceType: 'Accommodation',
-            serviceSubtype: row.roomType,
-            adults: room.adults,
-            children: room.children,
-            infants: 0,
-            passengers: room.adults + room.children + 0,
-            quoteLineItemId: null,
-            order: i + 1
-        }));
+        const roomConfigurations = this.buildQliRoomConfigurations(row);
 
         const params = {
             serviceLineItemName: row.supplier,
@@ -893,7 +930,6 @@ export default class AvailabilitySearch extends LightningElement {
                 this.showToast('Error', 'Error occured while adding QuoteLineItem.', 'error');
             }
         } catch (error) {
-            // eslint-disable-next-line no-console
             console.error(`Error saving for "${row.supplier}": `, error);
             this.showToast('Error', `Error occured while adding QuoteLineItem - ${error}`, 'error');
         } finally {
@@ -902,54 +938,31 @@ export default class AvailabilitySearch extends LightningElement {
     }
 
     handleSaveSelected = async () => {
-        // Collect selected, valid rows
-        const selected = (this.rows || []).filter(
-            r => !!this.selectedKeys[r.selKey] && !r.addDisabled
-        );
-
+        const selected = (this.rows || []).filter(r => !!this.selectedKeys[r.selKey] && !r.addDisabled);
         if (selected.length === 0) {
             this.showToast('Nothing to save', 'Please select one or more options first.', 'warning');
             return;
         }
+        if (!this.validateRoomTotalsExact()) return;
 
         this.loading = true;
 
-        // Helper for button class (keeps color in sync)
-        const computeSelectClass = (isSelected) => `select-button${isSelected ? ' selected' : ''}`;
-
-        let ok = 0;
-        let fail = 0;
+        let ok = 0, fail = 0;
         const failedMsgs = [];
+        let postToast = null;
 
         try {
-            // IMPORTANT: run **sequentially** to avoid row-locks on the same Quote
             for (const row of selected) {
                 try {
-                    // Per-hotel effective inputs (dates/rooms/nights)
                     const eff = this.getEffectiveGroupFilters(row.crmCode);
 
-                    // Pull OPT for the row
                     const selectedOPT = await getOptByOptCode({ optCode: row.optId });
                     if (!selectedOPT || !selectedOPT[0]) {
                         throw new Error(`OPT not found for ${row.optId}`);
                     }
 
-                    // Build room configs (keep your logic)
-                    const roomQty = parseInt(eff.quantityRooms, 10) || 1;
-                    const roomConfigs = Array.from({ length: roomQty }, () => ({ children: 0, adults: 2 }));
-                    const roomConfigurations = roomConfigs.map((room, i) => ({
-                        id: i + 1,
-                        serviceType: 'Accommodation',
-                        serviceSubtype: row.roomType,
-                        adults: room.adults,
-                        children: room.children,
-                        infants: 0,
-                        passengers: room.adults + room.children + 0,
-                        quoteLineItemId: null,
-                        order: i + 1
-                    }));
+                    const roomConfigurations = this.buildQliRoomConfigurations(row);
 
-                    // Params per your single-add flow
                     const params = {
                         serviceLineItemName: row.supplier,
                         selectedServiceType: selectedOPT[0].SRV_Name__c,
@@ -966,8 +979,8 @@ export default class AvailabilitySearch extends LightningElement {
                         overrideDetails: false,
                         overridenSupplierPolicy: true,
                         selectedPassengers: [],
-                        serviceDate: eff.startDate,                    // per-hotel date
-                        numberOfDays: String(eff.durationNights),      // per-hotel nights
+                        serviceDate: eff.startDate,
+                        numberOfDays: String(eff.durationNights),
                         displayDuration: String(eff.durationNights),
                         quoteId: this.recordId,
                         roomConfigurations,
@@ -984,25 +997,21 @@ export default class AvailabilitySearch extends LightningElement {
                     };
 
                     const result = await SaveQuoteLineItem(params);
-                    // Your Apex returns [] on success
+
                     if (Array.isArray(result) && result.length === 0) {
                         ok += 1;
-
-                        // Deselect this row in all places
                         const k = row.selKey;
                         const newSel = { ...this.selectedKeys };
                         delete newSel[k];
                         this.selectedKeys = newSel;
 
-                        // Update flat rows
                         this.rows = (this.rows || []).map(r =>
-                            r.selKey === k ? { ...r, isSelected: false, selectButtonClass: computeSelectClass(false) } : r
+                            r.selKey === k ? { ...r, isSelected: false, selectButtonClass: this.computeSelectClass(false) } : r
                         );
-                        // Update grouped rows
                         this.groups = (this.groups || []).map(g => ({
                             ...g,
                             items: g.items.map(it =>
-                                it.selKey === k ? { ...it, isSelected: false, selectButtonClass: computeSelectClass(false) } : it
+                                it.selKey === k ? { ...it, isSelected: false, selectButtonClass: this.computeSelectClass(false) } : it
                             )
                         }));
                     } else {
@@ -1010,28 +1019,26 @@ export default class AvailabilitySearch extends LightningElement {
                     }
                 } catch (errOne) {
                     fail += 1;
-                    // Common parallel issue we’re avoiding: UNABLE_TO_LOCK_ROW
                     failedMsgs.push(errOne?.body?.message || errOne?.message || 'Unknown error');
-                    // continue with next row
                 }
             }
 
             if (ok > 0 && fail === 0) {
-                this.showToast('Success', `Created ${ok} Quote Line Item(s).`, 'success');
+                postToast = { title: 'Success', message: `Created ${ok} Quote Line Item(s).`, variant: 'success' };
+                this.handleClearSelection();
             } else if (ok > 0 && fail > 0) {
-                this.showToast('Partial success', `Created ${ok}. Failed ${fail}.`, 'warning');
-                // Optional: log the first few failure messages
+                postToast = { title: 'Partial success', message: `Created ${ok}. Failed ${fail}.`, variant: 'warning' };
                 console.warn('Failures:', failedMsgs.slice(0, 5));
             } else {
-                this.showToast('Failed', `All ${fail} item(s) failed to save.`, 'error');
+                postToast = { title: 'Failed', message: `All ${fail} item(s) failed to save.`, variant: 'error' };
                 console.error('Failures:', failedMsgs);
             }
         } finally {
             this.loading = false;
+            if (postToast) this.showToast(postToast.title, postToast.message, postToast.variant);
         }
     };
 
-    // --- Pretty header values (used in the group header) ---
     get headerCheckIn() {
         return this.formatDatePretty(this.filters.startDate);
     }
@@ -1055,9 +1062,6 @@ export default class AvailabilitySearch extends LightningElement {
         return this.filters.location || '—';
     }
     get headerSupplierStatus() {
-        // human-friendly label from filter (fallback to em dash)
-        // const m = { '': 'Any', PF: 'Preferred', PP: 'Pre-paid / Voucher' };
-        // return m[this.filters.supplierStatus ?? ''] || '—';
         if (!this.selectedSupplierStatuses || this.selectedSupplierStatuses.length === 0) {
             return 'Any';
         }
@@ -1069,7 +1073,6 @@ export default class AvailabilitySearch extends LightningElement {
         return r[this.filters.starRating ?? ''] || '-';
     }
 
-    // date formatting used by header
     formatDatePretty(isoLike) {
         if (!isoLike) return '—';
         const d = new Date(isoLike);
@@ -1100,7 +1103,6 @@ export default class AvailabilitySearch extends LightningElement {
 
         this.groupEdits = { ...this.groupEdits, [crm]: next };
 
-        // Refresh UI fields only for this group (cheap in-place update)
         this.groups = this.groups.map(g => {
             if (g.crmCode !== crm) return g;
             const eff = this.getEffectiveGroupFilters(crm);
@@ -1139,7 +1141,6 @@ export default class AvailabilitySearch extends LightningElement {
         const crm = e.currentTarget.dataset.crm;
         if (!crm) return;
 
-        // Helper to flip loading on this specific group (no computed access in template)
         const setLoading = (val) => {
             this.groups = (this.groups || []).map(g =>
                 g.crmCode === crm ? { ...g, loading: !!val } : g
@@ -1149,14 +1150,12 @@ export default class AvailabilitySearch extends LightningElement {
         setLoading(true);
 
         try {
-            // 1) Effective inputs for THIS group (group overrides -> fallback to top)
             const overrides = (this.groupEdits && this.groupEdits[crm]) ? this.groupEdits[crm] : {};
             const eff = { ...this.filters, ...overrides };
             eff.endDate =
                 eff.endDate ||
                 this.computeEndDate(eff.startDate, eff.durationNights);
 
-            // 2) Locations to search: reuse from the last main search, or fetch now
             let locationCodes = Array.isArray(this.lastSelectedLocationCodes)
                 ? this.lastSelectedLocationCodes
                 : [];
@@ -1166,10 +1165,9 @@ export default class AvailabilitySearch extends LightningElement {
                     locationIds: (this.selectedLocations || []).map(l => l.value)
                 });
                 locationCodes = (locs || []).map(l => l.LOC_Name__c);
-                this.lastSelectedLocationCodes = locationCodes; // cache for future per-group searches
+                this.lastSelectedLocationCodes = locationCodes;
             }
 
-            // 3) Build per-group payload (only this CRM, across the chosen locations)
             const roomQty = parseInt(eff.quantityRooms, 10) || 1;
             const roomConfigs = Array.from({ length: roomQty }, () => ({
                 RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
@@ -1190,18 +1188,15 @@ export default class AvailabilitySearch extends LightningElement {
             const body = await getOptions({ reqPayload: JSON.stringify({ records }) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
-            // 4) Transform + FILTER rows for THIS CRM only
             const allNewRows = this.transformApiData(raw);
             let newRows = allNewRows.filter(r => r.crmCode === crm);
 
-            // Live availability (top control)
             if (this.filters.liveAvailability === 'OK') {
                 newRows = newRows.filter(r => r.status === 'Available');
             } else if (this.filters.liveAvailability === 'RQ') {
                 newRows = newRows.filter(r => r.status === 'On Request');
             }
 
-            // Star rating: prefer group override; else top multi-select
             const groupStar = (overrides.starRating || '').trim();
             const starsToFilter = groupStar ? [groupStar] : this.selectedStarRatings;
             if (starsToFilter && starsToFilter.length > 0) {
@@ -1212,14 +1207,12 @@ export default class AvailabilitySearch extends LightningElement {
                 );
             }
 
-            // Supplier status (top multi-select)
             if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
                 newRows = newRows.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
             }
 
             newRows = newRows.map(r => ({ ...r, isSelected: !!this.selectedKeys[r.selKey] }));
 
-            // 5) Replace ONLY this group's items; keep others intact
             const sortItems = (arr) => arr.slice().sort((x, y) => {
                 const s = (x.status || '').localeCompare(y.status || '');
                 if (s !== 0) return s;
@@ -1235,11 +1228,9 @@ export default class AvailabilitySearch extends LightningElement {
                     ...g,
                     items: sorted,
                     firstLocality: sorted.length > 0 ? sorted[0].locality : g.firstLocality
-                    // keep uiStartDate/uiEndDate/uiDurationNights/uiQuantityRooms/uiStarRating as they already reflect edits
                 };
             });
 
-            // 6) Keep flat rows in sync so "Add" buttons continue to work
             const others = (this.rows || []).filter(r => r.crmCode !== crm);
             const ts = Date.now();
             const refreshedRows = newRows.map((r, i) => ({ ...r, id: `${crm}-${i}-${ts}` }));

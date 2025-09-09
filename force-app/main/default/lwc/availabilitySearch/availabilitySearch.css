@@ -351,3 +351,39 @@ td .slds-truncate {
   cursor: not-allowed;
   opacity: .6;
 }
+
+.roomcfg-section {
+  border-radius: 4px;
+  margin: 8px 16px 6px;
+  background: #fff;
+}
+
+.roomcfg-header {
+  background: #fff5ee;
+  color: #e65c00;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-bottom: 1px solid #ffd0ad;
+}
+
+.roomcfg-table .slds-input,
+.roomcfg-table .slds-select {
+  height: 2rem;
+  min-height: 2rem;
+  padding: 0 .5rem;
+}
+
+/* let the dropdown escape the scroll area and sit above the card */
+.roomcfg-section { position: relative; z-index: 3; overflow: visible; }
+.roomcfg-section .slds-scrollable_x { overflow: visible !important; }
+
+/* raise the combobox stacking context */
+.roomcfg-section .slds-combobox { position: relative; z-index: 4; }
+.roomcfg-section .slds-combobox__dropdown,
+.roomcfg-section .slds-dropdown { z-index: 5; }
+
+.room-error {
+  color: #c23934;
+  font-weight: 600;
+  margin: 6px 10px 0 10px;
+}

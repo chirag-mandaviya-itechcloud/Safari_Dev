@@ -97,7 +97,84 @@
                     </div>
                 </div>
             </div>
+
+            <div class="roomcfg-section">
+                <div class="roomcfg-header">Room Configuration</div>
+                <template if:true={validationError}>
+                    <div class="room-error">{validationError}</div>
+                </template>
+
+                <div class="slds-scrollable_x">
+                    <table
+                        class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered roomcfg-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 8rem;">
+                                    <div class="slds-truncate">Rooms</div>
+                                </th>
+                                <th style="width: 14rem;">
+                                    <div class="slds-truncate">Room Type</div>
+                                </th>
+                                <th style="width: 10rem;">
+                                    <div class="slds-truncate">Adult</div>
+                                </th>
+                                <th style="width: 10rem;">
+                                    <div class="slds-truncate">Child</div>
+                                </th>
+                                <th style="width: 10rem;">
+                                    <div class="slds-truncate">Infant</div>
+                                </th>
+                                <th style="width: 8rem;">
+                                    <div class="slds-truncate">Passengers</div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={roomConfigs} for:item="rc" for:index="i">
+                                <tr key={rc.id}>
+                                    <td>
+                                        <div class="slds-truncate">Room {rc.id}</div>
+                                    </td>
+
+                                    <td>
+                                        <lightning-combobox name="roomType" value={rc.roomType}
+                                            options={roomTypeOptions} variant="label-hidden" data-index={i}
+                                            onchange={handleRoomChange}>
+                                        </lightning-combobox>
+                                    </td>
+
+                                    <td>
+                                        <lightning-input type="number" name="adults" min="0" step="1" value={rc.adults}
+                                            variant="label-hidden" data-index={i} onchange={handleRoomChange}>
+                                        </lightning-input>
+                                    </td>
+
+                                    <td>
+                                        <lightning-input type="number" name="children" min="0" step="1"
+                                            value={rc.children} variant="label-hidden" data-index={i}
+                                            onchange={handleRoomChange}>
+                                        </lightning-input>
+                                    </td>
+
+                                    <td>
+                                        <lightning-input type="number" name="infants" min="0" step="1"
+                                            value={rc.infants} variant="label-hidden" data-index={i}
+                                            onchange={handleRoomChange}>
+                                        </lightning-input>
+                                    </td>
+
+                                    <td>
+                                        <div class="slds-truncate slds-text-align_center">{rc.passengers}</div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+
+
 
         <template if:true={loading}>
             <lightning-spinner alternative-text="Loading" size="medium" class="spinner-class" variant="brand">
