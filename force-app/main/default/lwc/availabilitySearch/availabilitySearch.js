@@ -267,8 +267,6 @@ export default class AvailabilitySearch extends LightningElement {
     async handleSearch() {
         this.loading = true;
         this.error = undefined;
-        this.rows = [];
-        this.groups = [];
 
         // ---- Required field validation ----
         const requiredFields = [
@@ -278,38 +276,41 @@ export default class AvailabilitySearch extends LightningElement {
             { key: 'quantityRooms', label: 'Quantity (Rooms)' },
         ];
         const missing = requiredFields.filter(f => !this.filters[f.key]);
+        const noLocation = !this.selectedLocations || this.selectedLocations.length === 0;
 
-        let missingLocation = false;
-        if (!this.selectedLocations || this.selectedLocations.length === 0) {
-            missingLocation = true;
-        }
-        if (missing.length || missingLocation) {
+        if (missing.length || noLocation) {
             const fieldNames = missing.map(f => f.label);
-            if (missingLocation) fieldNames.push('Location');
+            if (noLocation) fieldNames.push('Location');
             this.showToast('Missing Required Fields', `Please fill in: ${fieldNames.join(', ')}`, 'error');
             this.loading = false;
             return;
         }
 
         try {
-            const locationData = await getSelectedLocationsWithCodes({ locationIds: this.selectedLocations.map(l => l.value) });
-            console.log('Location Data from server: ', locationData);
+            // 1) Resolve location codes for *this* search
+            const locationData = await getSelectedLocationsWithCodes({
+                locationIds: this.selectedLocations.map(l => l.value),
+            });
+            const newLocCodes = (locationData || []).map(l => l.LOC_Name__c);
 
-            this.lastSelectedLocationCodes = (locationData || []).map(l => l.LOC_Name__c);
+            // Keep a union with any previously searched locations
+            const locUnion = new Set([...(this.lastSelectedLocationCodes || []), ...newLocCodes]);
+            this.lastSelectedLocationCodes = Array.from(locUnion);
 
-            // Build payloads for every location/hotel CRM code combination
-            let payloads = [];
-            const hotelCrmCodes = this.selectedSupplierCrmCodes && this.selectedSupplierCrmCodes.length > 0 ? this.selectedSupplierCrmCodes : [null];
+            // 2) Build payloads
+            const payloads = [];
+            const hotelCrmCodes =
+                (this.selectedSupplierCrmCodes && this.selectedSupplierCrmCodes.length > 0)
+                    ? this.selectedSupplierCrmCodes
+                    : [null];
+
             locationData.forEach(loc => {
                 const locationCode = loc.LOC_Name__c;
                 hotelCrmCodes.forEach(crmCode => {
-                    let opt;
-                    if (crmCode) {
-                        opt = `${locationCode}${this.filters.serviceType}${crmCode}??????`;
-                    } else {
-                        opt = `${locationCode}${this.filters.serviceType}????????????`;
-                    }
-                    // build RoomConfigs array based on quantityRooms
+                    const opt = crmCode
+                        ? `${locationCode}${this.filters.serviceType}${crmCode}??????`
+                        : `${locationCode}${this.filters.serviceType}????????????`;
+
                     const roomQty = parseInt(this.filters.quantityRooms, 10) || 1;
                     const roomConfigs = Array.from({ length: roomQty }, () => ({
                         RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
@@ -327,68 +328,64 @@ export default class AvailabilitySearch extends LightningElement {
                 });
             });
 
-            // Combine all payloads into one request if supported, else loop and merge results
             const requestPayload = { records: payloads };
-            console.log('Payload : ', requestPayload);
-
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
-            console.log("Response Body: ", raw);
+            // 3) Transform only the newly fetched results
+            const fetchedRows = this.transformApiData(raw);
 
-            // build flat rows and grouped view
-            this.rows = this.transformApiData(raw);
-            const selectedLiveAvailability = this.filters.liveAvailability;
+            // 4) Apply top-level filters to the *new* rows
+            const live = this.filters.liveAvailability;
+            let filtered = fetchedRows.filter(r => {
+                if (live === 'OK') return r.status === 'Available';
+                if (live === 'RQ') return r.status === 'On Request';
+                return true;
+            });
 
-            const filteredRows = this.rows.filter(row => {
-                if (selectedLiveAvailability === 'OK') {
-                    return row.status === 'Available';
-                } else if (selectedLiveAvailability === 'RQ') {
-                    return row.status === 'On Request';
-                }
-                return true; // fallback for 'Any'
-            })
-
-            let finalRows = filteredRows;
-
-            // Supplier Status filter
-            if (this.filters.supplierStatus) {
-                finalRows = finalRows.filter(row => {
-                    // row.supplierStatus should be set in transformApiData/mapStayToRow
-                    // return row.supplierStatus === this.filters.supplierStatus;
-                    this.selectedSupplierStatuses.includes(row.supplierStatus)
-                });
-            }
-
-            // Multi-select Star Rating filter (contains logic)
             if (this.selectedStarRatings && this.selectedStarRatings.length > 0) {
-                finalRows = finalRows.filter(row =>
-                    this.selectedStarRatings.some(selected =>
-                        row.starRating && row.starRating.toLowerCase().includes(selected.toLowerCase())
+                filtered = filtered.filter(row =>
+                    this.selectedStarRatings.some(sel =>
+                        row.starRating && row.starRating.toLowerCase().includes(sel.toLowerCase())
                     )
                 );
             }
 
-            // filter for attractions
-            // if (this.selectedAttractions && this.selectedAttractions.length > 0) {
-            //     finalRows = finalRows.filter(row =>
-            //         this.selectedAttractions.some(attr => row.attractions?.includes(attr))
-            //     );
-            // }
+            if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
+                filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
+            }
 
-            finalRows = finalRows.map(r => {
+            // 5) Normalize new rows: unique id + preserve selection state
+            const ts = Date.now();
+            const normalizedNew = filtered.map((r, i) => {
                 const selected = !!this.selectedKeys[r.selKey];
-                return { ...r, isSelected: selected, selectButtonClass: this.computeSelectClass(selected) };
+                return {
+                    ...r,
+                    id: `${r.selKey}-${ts}-${i}`,
+                    isSelected: selected,
+                    selectButtonClass: this.computeSelectClass(selected),
+                };
             });
 
-            console.log('Filtered Rows:', finalRows);
+            // 6) Merge with existing rows by selKey (skip duplicates)
+            const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
+            for (const nr of normalizedNew) {
+                if (!existingBySelKey.has(nr.selKey)) {
+                    existingBySelKey.set(nr.selKey, nr);
+                }
+                // If you prefer to *replace* duplicates with fresher data, use:
+                // existingBySelKey.set(nr.selKey, nr);
+            }
+            const mergedRows = Array.from(existingBySelKey.values());
 
-            this.groups = this.groupBySupplier(finalRows);
-            console.log('Groups:', this.groups);
+            // 7) Save and regroup (this appends new hotels without losing existing ones)
+            this.rows = mergedRows;
+            this.groups = this.groupBySupplier(mergedRows);
+
         } catch (err) {
-            this.error = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
-            this.rows = [];
-            this.groups = [];
+            this.error = (err && err.body && err.body.message)
+                ? err.body.message
+                : (err?.message || 'Unexpected error');
         } finally {
             this.loading = false;
             this.hasSearched = true;
