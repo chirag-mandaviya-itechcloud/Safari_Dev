@@ -167,7 +167,13 @@ body {
 }
 
 .date-cell {
-  width: 26%;
+  width: 23%;
+  font-size: 12px;
+}
+
+.integer-cell {
+  width: 10%;
+  font-size: 12px;
 }
 
 /* search button on the right (orange block like screenshot) */

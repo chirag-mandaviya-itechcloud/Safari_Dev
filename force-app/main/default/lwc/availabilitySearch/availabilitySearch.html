@@ -112,31 +112,14 @@
                 </div>
                 <template for:each={groups} for:item="grp">
                     <div key={grp.crmCode} class="group-block">
-                        <!-- Supplier header styled like the screenshot -->
-                        <!-- <div class="supplier-header-row">
-                            <div class="supplier-cell supplier-name">
-                                <strong>{grp.supplier}</strong>
-                            </div>
-
-                            <div class="supplier-cell">{headerCheckIn}</div>
-                            <div class="supplier-cell">{headerCheckOut}</div>
-                            <div class="supplier-cell">{headerNights}</div>
-                            <div class="supplier-cell">{headerRooms}</div>
-                            <div class="supplier-cell">{grp.firstLocality}</div>
-
-                            <div class="supplier-cell">{headerStarRating}</div>
-
-                            <div class="supplier-cell search-cell">
-                                <button class="search-btn header-search-btn">Search</button>
-                            </div>
-                        </div> -->
                         <div class="supplier-header-row">
                             <div class="supplier-cell supplier-name">
                                 <strong>{grp.supplier}</strong>
                             </div>
 
                             <!-- Check-in (editable per hotel) -->
-                            <div class="supplier-cell">
+                            <div class="supplier-cell date-cell">
+                                <span class="header-suffix">Start Date</span>
                                 <lightning-input type="date" name="startDate" value={grp.uiStartDate}
                                     data-crm={grp.crmCode} onchange={handleGroupHeaderChange} class="header-input"
                                     variant="label-hidden">
@@ -144,7 +127,8 @@
                             </div>
 
                             <!-- Check-out (computed, read-only in header) -->
-                            <div class="supplier-cell">
+                            <div class="supplier-cell date-cell">
+                                <span class="header-suffix">End Date</span>
                                 <lightning-input type="date" value={grp.uiEndDate} disabled class="header-input"
                                     variant="label-hidden">
                                 </lightning-input>
@@ -152,20 +136,20 @@
 
                             <!-- Nights (editable per hotel) -->
                             <div class="supplier-cell">
+                                <span class="header-suffix">Nights</span>
                                 <lightning-input type="number" name="durationNights" value={grp.uiDurationNights}
                                     min="1" max="30" step="1" data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
                                     class="header-input" variant="label-hidden">
                                 </lightning-input>
-                                <span class="header-suffix"> (Nights)</span>
                             </div>
 
                             <!-- Rooms (editable per hotel) -->
                             <div class="supplier-cell">
+                                <span class="header-suffix">Rooms</span>
                                 <lightning-input type="number" name="quantityRooms" value={grp.uiQuantityRooms} min="1"
                                     max="9" step="1" data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
                                     class="header-input" variant="label-hidden">
                                 </lightning-input>
-                                <span class="header-suffix"> (Rooms)</span>
                             </div>
 
                             <!-- Locality (read-only) -->
