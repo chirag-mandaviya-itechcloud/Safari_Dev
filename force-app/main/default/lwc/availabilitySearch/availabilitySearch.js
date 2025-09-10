@@ -271,6 +271,11 @@ export default class AvailabilitySearch extends LightningElement {
     appendResultsFromRaw(raw, source) {
         const fetchedRows = this.transformApiData(raw);
 
+        if (!this.lastSelectedLocationCodes || this.lastSelectedLocationCodes.length === 0) {
+            const derived = [...new Set(fetchedRows.map(r => r.locCode).filter(Boolean))];
+            if (derived.length > 0) this.lastSelectedLocationCodes = derived;
+        }
+
         let filtered = fetchedRows;
         if (source === "Search") {
             const live = this.filters.liveAvailability;
@@ -452,8 +457,8 @@ export default class AvailabilitySearch extends LightningElement {
         this.roomConfigs = rooms;
     };
 
-    buildApiRoomConfigs() {
-        const qty = parseInt(this.filters.quantityRooms, 10) || 1;
+    buildApiRoomConfigs(qtyOverride) {
+        const qty = parseInt(qtyOverride ?? this.filters.quantityRooms, 10) || 1;
         this.syncRoomsToQuantity(qty);
 
         return (this.roomConfigs || []).map(r => ({
@@ -596,7 +601,7 @@ export default class AvailabilitySearch extends LightningElement {
                         ? `${locationCode}${this.filters.serviceType}${crmCode}??????`
                         : `${locationCode}${this.filters.serviceType}????????????`;
 
-                    const roomConfigs = this.buildApiRoomConfigs();
+                    const roomConfigs = this.buildApiRoomConfigs(this.filters.quantityRooms);
 
                     payloads.push({
                         Opt: opt,
@@ -711,7 +716,41 @@ export default class AvailabilitySearch extends LightningElement {
             selKey,
             isSelected: selected,
             selectButtonClass: `select-button${selected ? ' selected' : ''}`,
+            locCode: this.extractLoc(optMeta.optId)
         };
+    }
+
+    // Add this helper inside the class
+    async resolveLocationCodesForGroup(crm) {
+        // 1) If we already have them from a previous global search, use them.
+        if (this.lastSelectedLocationCodes && this.lastSelectedLocationCodes.length) {
+            return [...this.lastSelectedLocationCodes];
+        }
+
+        // 2) If the user has selected locations in the multi-select, resolve those.
+        if (this.selectedLocations && this.selectedLocations.length) {
+            const locs = await getSelectedLocationsWithCodes({
+                locationIds: this.selectedLocations.map(l => l.value)
+            });
+            return (locs || []).map(l => l.LOC_Name__c);
+        }
+
+        // 3) Fallback: infer from the current group’s first locality label.
+        const grp = (this.groups || []).find(g => g.crmCode === crm);
+        const firstLocality = (grp && grp.firstLocality) ? grp.firstLocality.trim().toLowerCase() : '';
+        if (firstLocality) {
+            // match the displayed locality to the loaded location options (case-insensitive)
+            const match = (this.locationOptions || []).find(
+                o => (o.label || '').trim().toLowerCase() === firstLocality
+            );
+            if (match) {
+                const locs = await getSelectedLocationsWithCodes({ locationIds: [match.value] });
+                return (locs || []).map(l => l.LOC_Name__c);
+            }
+        }
+
+        // Nothing found
+        return [];
     }
 
     handleChangeLocation(event) {
@@ -796,6 +835,13 @@ export default class AvailabilitySearch extends LightningElement {
         if (!optId || optId.length < 11) return '';
         return optId.substring(5, 11);
     }
+
+    extractLoc(optId) {
+        // optId pattern: <LOC(3)> + <SRV(2)> + <CRM(6)> + ...
+        if (!optId || optId.length < 3) return '';
+        return optId.substring(0, 3);
+    }
+
 
     groupBySupplier(rows) {
         const map = new Map();
@@ -1052,6 +1098,8 @@ export default class AvailabilitySearch extends LightningElement {
                 uiStarRating: eff.starRating || ''
             };
         });
+
+        console.log('Group edits:', this.groupEdits);
     };
 
     get headerText() {
@@ -1074,6 +1122,9 @@ export default class AvailabilitySearch extends LightningElement {
         return `Availability Search for ${parts.join(' and ')}`;
     }
 
+
+
+    // Replace the whole method
     handleGroupSearch = async (e) => {
         const crm = e.currentTarget.dataset.crm;
         if (!crm) return;
@@ -1085,31 +1136,40 @@ export default class AvailabilitySearch extends LightningElement {
         };
 
         setLoading(true);
-
         try {
+            // merge base filters with per-group overrides
             const overrides = (this.groupEdits && this.groupEdits[crm]) ? this.groupEdits[crm] : {};
             const eff = { ...this.filters, ...overrides };
-            eff.endDate =
-                eff.endDate ||
-                this.computeEndDate(eff.startDate, eff.durationNights);
+            eff.endDate = eff.endDate || this.computeEndDate(eff.startDate, eff.durationNights);
 
             let locationCodes = Array.isArray(this.lastSelectedLocationCodes)
-                ? this.lastSelectedLocationCodes
+                ? [...this.lastSelectedLocationCodes]
                 : [];
 
-            if (!locationCodes || locationCodes.length === 0) {
-                const locs = await getSelectedLocationsWithCodes({
-                    locationIds: (this.selectedLocations || []).map(l => l.value)
-                });
-                locationCodes = (locs || []).map(l => l.LOC_Name__c);
-                this.lastSelectedLocationCodes = locationCodes;
+            if (!locationCodes.length) {
+                // derive from rows in this group (already rendered from PE)
+                locationCodes = [...new Set(
+                    (this.rows || [])
+                        .filter(r => r.crmCode === crm)
+                        .map(r => r.locCode)
+                        .filter(Boolean)
+                )];
+                if (locationCodes.length) {
+                    this.lastSelectedLocationCodes = locationCodes; // cache for later runs
+                }
             }
 
-            const roomQty = parseInt(eff.quantityRooms, 10) || 1;
-            const roomConfigs = Array.from({ length: roomQty }, () => ({
-                RoomConfig: { Children: this.children, Adults: this.adults, Infants: this.infants }
-            }));
+            if (!locationCodes.length) {
+                this.showToast('Pick a location',
+                    'Please select a location (or run a global search) before using hotel-level search.',
+                    'warning');
+                return;
+            }
 
+            // build rooms honoring the group’s room override
+            const roomConfigs = this.buildApiRoomConfigs(eff.quantityRooms);
+
+            // ➜ build per-group, per-location records targeting THIS CRM only
             const records = locationCodes.map(locCode => ({
                 Opt: `${locCode}${eff.serviceType}${crm}??????`,
                 Info: 'GSI',
@@ -1120,20 +1180,29 @@ export default class AvailabilitySearch extends LightningElement {
                 MaximumOptions: 30
             }));
 
+            // Guard rail
+            if (!records.length) {
+                this.showToast('Nothing to search', 'Could not resolve location for this hotel.', 'warning');
+                return;
+            }
+
             console.log('Per-group payload:', { records });
 
+            // Call API
             const body = await getOptions({ reqPayload: JSON.stringify({ records }) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
-            const allNewRows = this.transformApiData(raw);
-            let newRows = allNewRows.filter(r => r.crmCode === crm);
+            // Transform and keep ONLY rows for this CRM/hotel
+            let newRows = this.transformApiData(raw).filter(r => r.crmCode === crm);
 
+            // Apply live availability & header selections
             if (this.filters.liveAvailability === 'OK') {
                 newRows = newRows.filter(r => r.status === 'Available');
             } else if (this.filters.liveAvailability === 'RQ') {
                 newRows = newRows.filter(r => r.status === 'On Request');
             }
 
+            // Apply star & supplier status filters (group override takes precedence)
             const groupStar = (overrides.starRating || '').trim();
             const starsToFilter = groupStar ? [groupStar] : this.selectedStarRatings;
             if (starsToFilter && starsToFilter.length > 0) {
@@ -1143,12 +1212,16 @@ export default class AvailabilitySearch extends LightningElement {
                     )
                 );
             }
-
             if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
                 newRows = newRows.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
             }
 
-            newRows = newRows.map(r => ({ ...r, isSelected: !!this.selectedKeys[r.selKey] }));
+            // Preserve selection state and update just this group in the UI
+            newRows = newRows.map(r => ({
+                ...r,
+                isSelected: !!this.selectedKeys[r.selKey],
+                selectButtonClass: this.computeSelectClass(!!this.selectedKeys[r.selKey])
+            }));
 
             const sortItems = (arr) => arr.slice().sort((x, y) => {
                 const s = (x.status || '').localeCompare(y.status || '');
@@ -1158,6 +1231,7 @@ export default class AvailabilitySearch extends LightningElement {
                 return nx - ny;
             });
 
+            // Update this group only
             this.groups = (this.groups || []).map(g => {
                 if (g.crmCode !== crm) return g;
                 const sorted = sortItems(newRows);
@@ -1168,10 +1242,13 @@ export default class AvailabilitySearch extends LightningElement {
                 };
             });
 
+            // Also refresh the flat rows for this CRM only
             const others = (this.rows || []).filter(r => r.crmCode !== crm);
             const ts = Date.now();
             const refreshedRows = newRows.map((r, i) => ({ ...r, id: `${crm}-${i}-${ts}` }));
             this.rows = [...others, ...refreshedRows];
+
+            console.log("Group search results:", newRows);
 
         } catch (err) {
             const msg = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
