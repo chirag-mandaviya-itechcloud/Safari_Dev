@@ -142,7 +142,7 @@ public with sharing class HotelAvailabilityService {
             System.debug('Status: ' + res.getStatusCode());
             System.debug('Response: ' + res.getBody());
             
-
+            /*
             if (res.getStatusCode() == 200) {
                 Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
                 // hw.availability = (String) responseMap.get('availability');
@@ -248,6 +248,7 @@ public with sharing class HotelAvailabilityService {
             } else {
                 availabilityMsg += 'Error from API: ' + res.getStatusCode() + ' - ' + res.getBody() + '\n';
             }
+            */
 
 
             // for (Object result : resultsList) {
@@ -274,14 +275,20 @@ public with sharing class HotelAvailabilityService {
             //     availabilityMsg += 'Hotel: ' + hotelName + ' - Skipped (no match)\n';
             // }
 
-           if (!hotelData.isEmpty()) {
+           if (res.getBody() != null) {
                 // Serialize hotel list to JSON
-                String hotelJson = JSON.serialize(hotelData);
+                String hotelJson = JSON.serialize(res.getBody());
                 System.debug('Serialized Hotel JSON: ' + hotelJson);
+               
+               String reqJson = JSON.serialize(requestWrapper);
+               System.debug('Serialized Request JSON: ' + reqJson);
 
                 // Fire Platform Event once
                 Hotel_Availability_Event__e evt = new Hotel_Availability_Event__e(
-                    Hotel_JSON__c = hotelJson
+                    Hotel_JSON__c = hotelJson,
+                    Start_Date__c = req.startDate,
+                    End_Date__c = req.endDate,
+                    Request_JSON__c = reqJson
                 );
                 EventBus.publish(evt);
             }
