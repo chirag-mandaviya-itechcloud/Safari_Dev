@@ -141,114 +141,113 @@ public with sharing class HotelAvailabilityService {
             HttpResponse res = http.send(httpRequest);
             System.debug('Status: ' + res.getStatusCode());
             System.debug('Response: ' + res.getBody());
-            
+
             /*
             if (res.getStatusCode() == 200) {
-                Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
-                // hw.availability = (String) responseMap.get('availability');
+            Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(res.getBody());
+            // hw.availability = (String) responseMap.get('availability');
 
 
-                List<Object> resultsList = (List<Object>) responseMap.get('result');
+            List<Object> resultsList = (List<Object>) responseMap.get('result');
 
-                System.debug('resultsList: ' + resultsList);
+            System.debug('resultsList: ' + resultsList);
 
-                for (Object result : resultsList) {
-                  //  if (result == null) continue;
-                    if(result==null){
-                        availabilityMsg += 'Not - Available\n';
-                        continue;
-                    }
-                    Map<String, Object> resultMap = (Map<String, Object>) result;
-                    String optCode = (String) resultMap.get('Opt');
-                    String crmCode = OptCodeToCrmCode.get(optCode);
-                    String supplierName = '';
-                    if (resultMap.containsKey('OptGeneral')) {
-                        Map<String, Object> optGeneral = (Map<String, Object>) resultMap.get('OptGeneral');
-                        supplierName = (String) optGeneral.get('SupplierName');
-                        System.debug('SupplierName: ' + supplierName);
-
-                    }
-
-                    Object optStayRaw = resultMap.get('OptStayResults');
-                    List<Object> optStayResults = new List<Object>();
-                    if (optStayRaw instanceof List<Object>) {
-                        // Already a list → cast directly
-                        optStayResults = (List<Object>) optStayRaw;
-                    } else if (optStayRaw instanceof Map<String, Object>) {
-                        // Single object → wrap in a list
-                        optStayResults.add((Map<String, Object>) optStayRaw);
-                    }
-
-                    HotelWrapper hw = new HotelWrapper();
-
-                    if (hotelData.containsKey(crmCode)) {
-                        hw = hotelData.get(crmCode);
-                    } else {
-                        hw.hotelName = supplierName;
-                        hw.startDate = req.startDate;
-                        hw.endDate = req.endDate;
-                        hw.numberOfPersons = req.numberOfPersons;
-                        hw.numberOfChildren = req.numberOfChildren;
-                        hw.availability = 'Not Available'; // Hardcoded for now
-                        hw.accountId = crmCodeToAccountMap.get(crmCode).Id;
-                        hw.crmCode = crmCode;
-                        hw.quoteId = req.quoteId;
-                        hw.availabilityResults = new List<HotelAvailabilityResult>();
-                    }
-
-                    for (Object osr : optStayResults) {
-                        Map<String, Object> stayResultMap = (Map<String, Object>) osr;
-                        if (stayResultMap.get('Availability') == 'NO') continue;
-                        HotelAvailabilityResult har = new HotelAvailabilityResult();
-                        har.OptId = (String) optCode;
-                        har.hotelName = supplierName;
-                        har.availability = (String) stayResultMap.get('Availability');
-                        har.currencyName = (String) stayResultMap.get('Currency');
-                        har.totalPrice = stayResultMap.containsKey('TotalPrice') && stayResultMap.get('TotalPrice') != null
-                            ? Decimal.valueOf(String.valueOf(stayResultMap.get('TotalPrice')))
-                            : 0;
-
-                        if (stayResultMap.containsKey('RateText') && String.isNotBlank(String.valueOf(stayResultMap.get('RateText')))) {
-                            har.rateText = String.valueOf(stayResultMap.get('RateText'));
-                        } else {
-                            Map<String, String> rateDetails = (Map<String, String>) stayResultMap.get('ExternalRateDetails');
-                            har.rateText = rateDetails != null ? rateDetails.get('ExtOptionDescr') : '';
-                        }
-
-                        hw.availabilityResults.add(har);
-                    }
-                    if (hw.availabilityResults.isEmpty()) {
-                        hw.availability = 'Not Available';
-                    } else {
-                        hw.availability = 'Available';
-                    }
-
-                    hotelData.put(crmCode, hw);
-                    availabilityMsg += 'Hotel: ' + supplierName + ' (AccountId: ' + hw.accountId + ') - Available\n';
-                }
-
-                for ( String keyCrm : crmCodeToAccountMap.keySet() ) {
-                    if (!hotelData.containsKey(keyCrm)) {
-                        HotelWrapper hw = new HotelWrapper();
-                        hw.hotelName = crmCodeToAccountMap.get(keyCrm).Name;
-                        hw.startDate = req.startDate;
-                        hw.endDate = req.endDate;
-                        hw.numberOfPersons = req.numberOfPersons;
-                        hw.numberOfChildren = req.numberOfChildren;
-                        hw.availability = 'Not Available';
-                        hw.accountId = crmCodeToAccountMap.get(keyCrm).Id;
-                        hw.crmCode = keyCrm;
-                        hw.quoteId = req.quoteId;
-
-                        hotelData.put(keyCrm, hw);
-                    }
-                }
-
-                System.debug('hotelData: ' + hotelData);
-            } else {
-                availabilityMsg += 'Error from API: ' + res.getStatusCode() + ' - ' + res.getBody() + '\n';
+            for (Object result : resultsList) {
+            //  if (result == null) continue;
+            if(result==null){
+            availabilityMsg += 'Not - Available\n';
+            continue;
             }
-            */
+            Map<String, Object> resultMap = (Map<String, Object>) result;
+            String optCode = (String) resultMap.get('Opt');
+            String crmCode = OptCodeToCrmCode.get(optCode);
+            String supplierName = '';
+            if (resultMap.containsKey('OptGeneral')) {
+            Map<String, Object> optGeneral = (Map<String, Object>) resultMap.get('OptGeneral');
+            supplierName = (String) optGeneral.get('SupplierName');
+            System.debug('SupplierName: ' + supplierName);
+
+            }
+
+            Object optStayRaw = resultMap.get('OptStayResults');
+            List<Object> optStayResults = new List<Object>();
+            if (optStayRaw instanceof List<Object>) {
+            // Already a list → cast directly
+            optStayResults = (List<Object>) optStayRaw;
+            } else if (optStayRaw instanceof Map<String, Object>) {
+            // Single object → wrap in a list
+            optStayResults.add((Map<String, Object>) optStayRaw);
+            }
+
+            HotelWrapper hw = new HotelWrapper();
+
+            if (hotelData.containsKey(crmCode)) {
+            hw = hotelData.get(crmCode);
+            } else {
+            hw.hotelName = supplierName;
+            hw.startDate = req.startDate;
+            hw.endDate = req.endDate;
+            hw.numberOfPersons = req.numberOfPersons;
+            hw.numberOfChildren = req.numberOfChildren;
+            hw.availability = 'Not Available'; // Hardcoded for now
+            hw.accountId = crmCodeToAccountMap.get(crmCode).Id;
+            hw.crmCode = crmCode;
+            hw.quoteId = req.quoteId;
+            hw.availabilityResults = new List<HotelAvailabilityResult>();
+            }
+
+            for (Object osr : optStayResults) {
+            Map<String, Object> stayResultMap = (Map<String, Object>) osr;
+            if (stayResultMap.get('Availability') == 'NO') continue;
+            HotelAvailabilityResult har = new HotelAvailabilityResult();
+            har.OptId = (String) optCode;
+            har.hotelName = supplierName;
+            har.availability = (String) stayResultMap.get('Availability');
+            har.currencyName = (String) stayResultMap.get('Currency');
+            har.totalPrice = stayResultMap.containsKey('TotalPrice') && stayResultMap.get('TotalPrice') != null
+            ? Decimal.valueOf(String.valueOf(stayResultMap.get('TotalPrice')))
+            : 0;
+
+            if (stayResultMap.containsKey('RateText') && String.isNotBlank(String.valueOf(stayResultMap.get('RateText')))) {
+            har.rateText = String.valueOf(stayResultMap.get('RateText'));
+            } else {
+            Map<String, String> rateDetails = (Map<String, String>) stayResultMap.get('ExternalRateDetails');
+            har.rateText = rateDetails != null ? rateDetails.get('ExtOptionDescr') : '';
+            }
+
+            hw.availabilityResults.add(har);
+            }
+            if (hw.availabilityResults.isEmpty()) {
+            hw.availability = 'Not Available';
+            } else {
+            hw.availability = 'Available';
+            }
+
+            hotelData.put(crmCode, hw);
+            availabilityMsg += 'Hotel: ' + supplierName + ' (AccountId: ' + hw.accountId + ') - Available\n';
+            }
+
+            for ( String keyCrm : crmCodeToAccountMap.keySet() ) {
+            if (!hotelData.containsKey(keyCrm)) {
+            HotelWrapper hw = new HotelWrapper();
+            hw.hotelName = crmCodeToAccountMap.get(keyCrm).Name;
+            hw.startDate = req.startDate;
+            hw.endDate = req.endDate;
+            hw.numberOfPersons = req.numberOfPersons;
+            hw.numberOfChildren = req.numberOfChildren;
+            hw.availability = 'Not Available';
+            hw.accountId = crmCodeToAccountMap.get(keyCrm).Id;
+            hw.crmCode = keyCrm;
+            hw.quoteId = req.quoteId;
+
+            hotelData.put(keyCrm, hw);
+            }
+            }
+
+            System.debug('hotelData: ' + hotelData);
+            } else {
+            availabilityMsg += 'Error from API: ' + res.getStatusCode() + ' - ' + res.getBody() + '\n';
+            }*/
 
 
             // for (Object result : resultsList) {
@@ -275,20 +274,21 @@ public with sharing class HotelAvailabilityService {
             //     availabilityMsg += 'Hotel: ' + hotelName + ' - Skipped (no match)\n';
             // }
 
-           if (res.getBody() != null) {
+            if (res.getBody() != null) {
                 // Serialize hotel list to JSON
                 String hotelJson = JSON.serialize(res.getBody());
                 System.debug('Serialized Hotel JSON: ' + hotelJson);
-               
-               String reqJson = JSON.serialize(requestWrapper);
-               System.debug('Serialized Request JSON: ' + reqJson);
+
+                String reqJson = JSON.serialize(requestWrapper);
+                System.debug('Serialized Request JSON: ' + reqJson);
 
                 // Fire Platform Event once
                 Hotel_Availability_Event__e evt = new Hotel_Availability_Event__e(
-                    Hotel_JSON__c = hotelJson,
+                    Hotel_JSON__c = res.getBody(),
                     Start_Date__c = req.startDate,
                     End_Date__c = req.endDate,
-                    Request_JSON__c = reqJson
+                    Request_JSON__c = reqJson,
+                    Quote_Id__c = req.quoteId
                 );
                 EventBus.publish(evt);
             }
