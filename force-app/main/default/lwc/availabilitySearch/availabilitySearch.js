@@ -1238,11 +1238,11 @@ export default class AvailabilitySearch extends LightningElement {
             // 5) Transform to rows, keep ONLY items for this CRM
             let newRows = this.transformApiData(raw).filter(r => r.crmCode === crm);
 
-            if (this.filters.liveAvailability === 'OK') {
-                newRows = newRows.filter(r => r.status === 'Available');
-            } else if (this.filters.liveAvailability === 'RQ') {
-                newRows = newRows.filter(r => r.status === 'On Request');
-            }
+            // if (this.filters.liveAvailability === 'OK') {
+            //     newRows = newRows.filter(r => r.status === 'Available');
+            // } else if (this.filters.liveAvailability === 'RQ') {
+            //     newRows = newRows.filter(r => r.status === 'On Request');
+            // }
 
             const groupStar = (this.groupEdits?.[crm]?.starRating || '').trim();
             const starsToFilter = groupStar ? [groupStar] : (this.selectedStarRatings || []);
