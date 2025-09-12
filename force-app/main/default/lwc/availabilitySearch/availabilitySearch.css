@@ -387,3 +387,28 @@ td .slds-truncate {
   font-weight: 600;
   margin: 6px 10px 0 10px;
 }
+
+/* allow popovers to escape the card/scroll areas */
+.group-block,
+.result-section,
+.supplier-header-row {
+  overflow: visible;
+}
+
+/* base stacking; headers sit above the table */
+.supplier-header-row {
+  position: relative;
+  z-index: 1;       /* baseline */
+}
+
+/* when focused, this header goes above all siblings & table */
+.supplier-header-row.is-active {
+  z-index: 1000;    /* high enough to clear neighboring groups */
+}
+
+/* make sure the table never wins the stacking battle */
+.slds-scrollable_x,
+.slds-table {
+  position: relative;
+  z-index: 0;
+}

@@ -1310,6 +1310,17 @@ export default class AvailabilitySearch extends LightningElement {
         }
     };
 
+    activateHeaderZ = (evt) => {
+        // the header row itself is the currentTarget in our handler
+        const header = evt.currentTarget;
+        header.classList.add('is-active');
+    };
+
+    deactivateHeaderZ = (evt) => {
+        const header = evt.currentTarget;
+        header.classList.remove('is-active');
+    };
+
 
     showToast(title, message, variant) {
         this.dispatchEvent(new ShowToastEvent({ title, message, variant }));

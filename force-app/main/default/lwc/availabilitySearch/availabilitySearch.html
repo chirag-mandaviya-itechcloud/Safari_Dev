@@ -196,7 +196,8 @@
                 </div>
                 <template for:each={groups} for:item="grp">
                     <div key={grp.crmCode} class="group-block">
-                        <div class="supplier-header-row">
+                        <div class="supplier-header-row" data-crm={grp.crmCode} onfocusin={activateHeaderZ}
+                            onfocusout={deactivateHeaderZ}>
                             <div class="supplier-cell supplier-name">
                                 <strong>{grp.supplier}</strong>
                             </div>
