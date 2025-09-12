@@ -423,3 +423,9 @@ td .slds-truncate {
 .select-cell {
   text-align: center;
 }
+
+.crm-sub {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 2px;
+}

@@ -7,6 +7,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
 import getLocationOptions from '@salesforce/apex/AvailabilitySearchController.getLocationOptions';
 import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedLocationsWithCodes';
+import getFerretDestinationFromCrmCode from '@salesforce/apex/AvailabilitySearchController.getFerretDestinationFromCrmCode';
 import getHotelsFromLocations from '@salesforce/apex/AvailabilitySearchController.getHotelsFromLocations';
 import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuoteLineItem';
 import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassengerTypeCounts';
@@ -77,6 +78,7 @@ export default class AvailabilitySearch extends LightningElement {
     lastSelectedLocationCodes = [];
     @track starHeaderOptions = [];
     @track selectedKeys = {};
+    ferretDestinations = {};
 
     @track roomConfigs = [];
     roomTypeOptions = [
@@ -131,6 +133,16 @@ export default class AvailabilitySearch extends LightningElement {
         }
     }
 
+    @wire(getFerretDestinationFromCrmCode, {})
+    crmCodeToFerretDestinations({ data, error }) {
+        if (data) {
+            console.log('Retrieved Ferret Destinations: ', data);
+            this.ferretDestinations = data;
+        } else if (error) {
+            console.error('Error retrieving Ferret Destinations: ', error);
+        }
+    }
+
     renderedCallback() {
         var locationComponent = this.template.querySelector('[role="cm-picklist"]');
         if (locationComponent != null && this.loadLoc) {
@@ -157,13 +169,13 @@ export default class AvailabilitySearch extends LightningElement {
             }
         }
 
-        var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
-        if (attractionsComponent != null && this.loadAttractions) {
-            attractionsComponent.setOptions(this.attractionsOptions);
-            if (this.selectedAttractions.length > 0) {
-                attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
-            }
-        }
+        // var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
+        // if (attractionsComponent != null && this.loadAttractions) {
+        //     attractionsComponent.setOptions(this.attractionsOptions);
+        //     if (this.selectedAttractions.length > 0) {
+        //         attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
+        //     }
+        // }
     }
 
     loadLocationOptions() {
@@ -851,23 +863,6 @@ export default class AvailabilitySearch extends LightningElement {
         }));
     };
 
-    // handleToggleSelect = (e) => {
-    //     const rowKey = e.currentTarget.dataset.rowKey;
-    //     const next = !this.selectedKeys[rowKey];
-    //     this.selectedKeys = { ...this.selectedKeys, [rowKey]: next };
-    //     const cls = this.computeSelectClass(next);
-
-    //     this.rows = (this.rows || []).map(r =>
-    //         r.selKey === rowKey ? { ...r, isSelected: next, selectButtonClass: cls } : r
-    //     );
-    //     this.groups = (this.groups || []).map(g => ({
-    //         ...g,
-    //         items: g.items.map(it =>
-    //             it.selKey === rowKey ? { ...it, isSelected: next, selectButtonClass: cls } : it
-    //         )
-    //     }));
-    // };
-
     handleClearSelection = () => {
         this.selectedKeys = {};
         this.rows = (this.rows || []).map(r => ({
@@ -922,11 +917,18 @@ export default class AvailabilitySearch extends LightningElement {
                 const start = ge.startDate ?? this.filters.startDate ?? '';
                 const nights = String(ge.durationNights ?? this.filters.durationNights ?? '1');
                 const end = start ? (ge.endDate ?? this.computeEndDate(start, nights)) : '';
+                const firstLocality = g.items.length > 0 ? g.items[0].locality : '';
+
+                let ferretDestinationLocation = this.ferretDestinations[g.crmCode];
+                if (!ferretDestinationLocation) {
+                    ferretDestinationLocation = firstLocality;
+                }
 
                 return {
                     ...g,
                     items: sortItems(g.items),
-                    firstLocality: g.items.length > 0 ? g.items[0].locality : '',
+                    firstLocality,
+                    ferretDestinationLocation,
                     uiStartDate: start || '',
                     uiEndDate: end || '',
                     uiDurationNights: nights,

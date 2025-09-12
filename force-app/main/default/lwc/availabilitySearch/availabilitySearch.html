@@ -178,7 +178,6 @@
             </lightning-spinner>
         </template>
 
-        <!-- GROUPED RESULTS (no toolbar filters) -->
         <template if:true={groups.length}>
             <div class="result-section">
                 <div class="results-header">
@@ -197,6 +196,9 @@
                             onfocusout={deactivateHeaderZ}>
                             <div class="supplier-cell supplier-name">
                                 <strong>{grp.supplier}</strong>
+                                <template if:true={grp.ferretDestinationLocation}>
+                                    <div class="crm-sub">{grp.ferretDestinationLocation}</div>
+                                </template>
                             </div>
 
                             <!-- Check-in (editable per hotel) -->
