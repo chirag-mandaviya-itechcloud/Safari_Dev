@@ -39,7 +39,7 @@
 
                     <!-- Row 2 -->
                     <template if:true={loadLoc}>
-                        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-5">
                             <!-- <lightning-combobox name="locationCode" label="Location" value={filters.locationCode}
                                 options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
                             </lightning-combobox> -->
@@ -66,16 +66,13 @@
                         </c-multi-select-picklist>
                     </div>
 
-                    <template if:true={loadAttractions}>
+                    <!-- <template if:true={loadAttractions}>
                         <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                            <!-- <lightning-input type="text" name="attractions" label="Attractions" value={filters.attractions}
-                            onchange={handleInput}>
-                        </lightning-input> -->
                             <c-multi-select-picklist label="Attractions" show-pills="true"
                                 onvaluechange={handleChangeAttractions} role="attractions-picklist">
                             </c-multi-select-picklist>
                         </div>
-                    </template>
+                    </template> -->
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
                         <lightning-combobox name="liveAvailability" label="Live Availability"
@@ -99,7 +96,7 @@
             </div>
 
             <div class="roomcfg-section">
-                <div class="roomcfg-header">Room Configuration</div>
+                <!-- <div class="roomcfg-header">Room Configuration</div> -->
                 <template if:true={validationError}>
                     <div class="room-error">{validationError}</div>
                 </template>
@@ -184,15 +181,15 @@
         <!-- GROUPED RESULTS (no toolbar filters) -->
         <template if:true={groups.length}>
             <div class="result-section">
-                <div>
+                <div class="results-header">
                     <p class="result-hadding">Hotels</p>
-                </div>
-                <div class="bulk-toolbar">
-                    <span class="bulk-pill">{selectedCount} selected</span>
-                    <button class="save-btn" onclick={handleSaveSelected} disabled={disableSave}>Save</button>
-                    <template if:true={hasSelection}>
-                        <button class="clear-btn" onclick={handleClearSelection}>Clear</button>
-                    </template>
+                    <div class="bulk-toolbar">
+                        <span class="bulk-pill">{selectedCount} selected</span>
+                        <button class="save-btn" onclick={handleSaveSelected} disabled={disableSave}>Save</button>
+                        <template if:true={hasSelection}>
+                            <button class="clear-btn" onclick={handleClearSelection}>Clear</button>
+                        </template>
+                    </div>
                 </div>
                 <template for:each={groups} for:item="grp">
                     <div key={grp.crmCode} class="group-block">
@@ -327,13 +324,11 @@
                                             <td data-label="Status">
                                                 <div class={row.statusClass}>{row.status}</div>
                                             </td>
-                                            <td data-label="Select">
-                                                <button onclick={handleToggleSelect} data-row-id={row.id}
-                                                    data-row-key={row.selKey} disabled={row.addDisabled}
-                                                    class={row.selectButtonClass}>
-                                                    <template if:true={row.isSelected}>Selected</template>
-                                                    <template if:false={row.isSelected}>Select</template>
-                                                </button>
+                                            <td data-label="Select" class="select-cell">
+                                                <lightning-input type="checkbox" variant="label-hidden"
+                                                    data-row-key={row.selKey} checked={row.isSelected}
+                                                    disabled={row.addDisabled} onchange={handleRowCheckboxChange}>
+                                                </lightning-input>
                                             </td>
                                         </tr>
                                     </template>

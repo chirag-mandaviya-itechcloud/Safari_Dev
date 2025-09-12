@@ -831,22 +831,42 @@ export default class AvailabilitySearch extends LightningElement {
         console.log('Selected attractions:', this.selectedAttractions);
     }
 
-    handleToggleSelect = (e) => {
-        const rowKey = e.currentTarget.dataset.rowKey;
-        const next = !this.selectedKeys[rowKey];
-        this.selectedKeys = { ...this.selectedKeys, [rowKey]: next };
-        const cls = this.computeSelectClass(next);
+    handleRowCheckboxChange = (e) => {
+        const rowKey = e.target.dataset.rowKey;
+        const checked = e.target.checked;
 
+        this.selectedKeys = { ...this.selectedKeys, [rowKey]: checked };
+
+        // reflect in flat rows
         this.rows = (this.rows || []).map(r =>
-            r.selKey === rowKey ? { ...r, isSelected: next, selectButtonClass: cls } : r
+            r.selKey === rowKey ? { ...r, isSelected: checked } : r
         );
+
+        // reflect in grouped rows
         this.groups = (this.groups || []).map(g => ({
             ...g,
             items: g.items.map(it =>
-                it.selKey === rowKey ? { ...it, isSelected: next, selectButtonClass: cls } : it
+                it.selKey === rowKey ? { ...it, isSelected: checked } : it
             )
         }));
     };
+
+    // handleToggleSelect = (e) => {
+    //     const rowKey = e.currentTarget.dataset.rowKey;
+    //     const next = !this.selectedKeys[rowKey];
+    //     this.selectedKeys = { ...this.selectedKeys, [rowKey]: next };
+    //     const cls = this.computeSelectClass(next);
+
+    //     this.rows = (this.rows || []).map(r =>
+    //         r.selKey === rowKey ? { ...r, isSelected: next, selectButtonClass: cls } : r
+    //     );
+    //     this.groups = (this.groups || []).map(g => ({
+    //         ...g,
+    //         items: g.items.map(it =>
+    //             it.selKey === rowKey ? { ...it, isSelected: next, selectButtonClass: cls } : it
+    //         )
+    //     }));
+    // };
 
     handleClearSelection = () => {
         this.selectedKeys = {};

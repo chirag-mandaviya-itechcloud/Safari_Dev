@@ -412,3 +412,14 @@ td .slds-truncate {
   position: relative;
   z-index: 0;
 }
+
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.select-cell {
+  text-align: center;
+}
