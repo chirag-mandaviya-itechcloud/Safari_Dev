@@ -169,13 +169,13 @@ export default class AvailabilitySearch extends LightningElement {
             }
         }
 
-        // var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
-        // if (attractionsComponent != null && this.loadAttractions) {
-        //     attractionsComponent.setOptions(this.attractionsOptions);
-        //     if (this.selectedAttractions.length > 0) {
-        //         attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
-        //     }
-        // }
+        var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
+        if (attractionsComponent != null && this.loadAttractions) {
+            attractionsComponent.setOptions(this.attractionsOptions);
+            if (this.selectedAttractions.length > 0) {
+                attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
+            }
+        }
     }
 
     loadLocationOptions() {

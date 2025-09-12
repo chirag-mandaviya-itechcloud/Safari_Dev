@@ -66,14 +66,6 @@
                         </c-multi-select-picklist>
                     </div>
 
-                    <!-- <template if:true={loadAttractions}>
-                        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                            <c-multi-select-picklist label="Attractions" show-pills="true"
-                                onvaluechange={handleChangeAttractions} role="attractions-picklist">
-                            </c-multi-select-picklist>
-                        </div>
-                    </template> -->
-
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
                         <lightning-combobox name="liveAvailability" label="Live Availability"
                             value={filters.liveAvailability} options={liveAvailOptions} onchange={handleInput}>
@@ -81,7 +73,7 @@
                     </div>
 
                     <!-- Row 3 -->
-                    <div class="slds-col slds-size_3-of-5">
+                    <div class="slds-col slds-size_2-of-5">
                         <!-- <lightning-input type="text" name="supplierName" label="Supplier Name"
                             placeholder="Supplier Name" value={filters.supplierName} onchange={handleInput}>
                         </lightning-input> -->
@@ -89,7 +81,15 @@
                             onvaluechange={handleChangeSupplier} role="cms-picklist"></c-multi-select-picklist>
                     </div>
 
-                    <div class="slds-col slds-size_2-of-5 margin-search">
+                    <template if:true={loadAttractions}>
+                        <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-5">
+                            <c-multi-select-picklist label="Attractions" show-pills="true"
+                                onvaluechange={handleChangeAttractions} role="attractions-picklist">
+                            </c-multi-select-picklist>
+                        </div>
+                    </template>
+
+                    <div class="slds-col slds-size_1-of-5 margin-search">
                         <button class="search-btn" onclick={handleSearch}>Search</button>
                     </div>
                 </div>
