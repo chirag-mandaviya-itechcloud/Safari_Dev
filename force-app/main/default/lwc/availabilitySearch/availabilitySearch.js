@@ -1102,6 +1102,8 @@ export default class AvailabilitySearch extends LightningElement {
         this.groups = this.groups.map(g =>
             g.crmCode === crmCode ? { ...g, loading: !!value } : g
         );
+
+        this.buildDateSections();
     }
 
     composeChildPolicy(gen) {
@@ -1356,16 +1358,19 @@ export default class AvailabilitySearch extends LightningElement {
         if (!crm) return;
 
         console.log(`Searching for hotel group ${crm}…`);
+        console.log('starting groups:', JSON.stringify(this.groups));
 
         // handy local setter so the "Searching…" label toggles correctly
-        const setLoading = (val) => {
-            this.groups = (this.groups || []).map(g =>
-                g.crmCode === crm ? { ...g, loading: !!val } : g
-            );
-        };
+        // const setLoading = (val) => {
+        //     this.groups = (this.groups || []).map(g =>
+        //         g.crmCode === crm ? { ...g, loading: !!val } : g
+        //     );
+        // };
 
         try {
-            setLoading(true);
+            this.setGroupLoading(crm, true);
+
+            console.log('Current groups:', JSON.stringify(this.groups));
 
             // 1) Use effective values (global filters + per-group overrides)
             const eff = this.getEffectiveGroupFilters(crm); // merges this.filters with this.groupEdits[crm]
@@ -1488,7 +1493,8 @@ export default class AvailabilitySearch extends LightningElement {
             const msg = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
             this.showToast('Error', msg, 'error');
         } finally {
-            setLoading(false);
+            this.setGroupLoading(crm, false);
+            console.log('end groups:', JSON.stringify(this.groups));
         }
     };
 
