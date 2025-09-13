@@ -147,7 +147,7 @@ export default class AvailabilitySearch extends LightningElement {
     }
 
     renderedCallback() {
-        var locationComponent = this.template.querySelector('[role="cm-picklist"]');
+        const locationComponent = this.template.querySelector('[role="cm-picklist"]');
         if (locationComponent != null && this.loadLoc) {
             locationComponent.setOptions(this.locationOptions);
             if (this.selectedLocations.length > 0) {
@@ -156,7 +156,7 @@ export default class AvailabilitySearch extends LightningElement {
 
         }
 
-        var starComponent = this.template.querySelector('[role="star-picklist"]');
+        const starComponent = this.template.querySelector('[role="star-picklist"]');
         if (starComponent != null) {
             starComponent.setOptions(this.starOptions);
             if (this.selectedStarRatings.length > 0) {
@@ -164,7 +164,7 @@ export default class AvailabilitySearch extends LightningElement {
             }
         }
 
-        var statusComponent = this.template.querySelector('[role="status-picklist"]');
+        const statusComponent = this.template.querySelector('[role="status-picklist"]');
         if (statusComponent != null) {
             statusComponent.setOptions(this.supplierStatusOptions);
             if (this.selectedSupplierStatuses.length > 0) {
@@ -172,11 +172,20 @@ export default class AvailabilitySearch extends LightningElement {
             }
         }
 
-        var attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
+        const attractionsComponent = this.template.querySelector('[role="attractions-picklist"]');
         if (attractionsComponent != null && this.loadAttractions) {
             attractionsComponent.setOptions(this.attractionsOptions);
             if (this.selectedAttractions.length > 0) {
                 attractionsComponent.setSelectedList(this.selectedAttractions.join(';'));
+            }
+        }
+
+        const supplierComponent = this.template.querySelector('[role="cms-picklist"]');
+        if (supplierComponent != null) {
+            if (this.selectedSuppliers.length > 0) {
+                supplierComponent.setSelectedList(
+                    this.selectedSuppliers.map(s => s.label).join(';')
+                );
             }
         }
     }
@@ -946,9 +955,21 @@ export default class AvailabilitySearch extends LightningElement {
 
     async getHotels() {
         this.selectableHotels = await getHotelsFromLocations({ locationIds: this.selectedLocations.map(l => l.value) });
-        var supplierComponent = this.template.querySelector('[role="cms-picklist"]');
-        if (supplierComponent != null) {
+        const supplierComponent = this.template.querySelector('[role="cms-picklist"]');
+        if (supplierComponent) {
             supplierComponent.setOptions(this.selectableHotels);
+
+            // keep only suppliers that still exist in the new option list
+            const stillValid = (this.selectedSuppliers || []).filter(sel =>
+                this.selectableHotels.some(opt => opt.value === sel.value)
+            );
+
+            this.selectedSuppliers = stillValid;
+            this.selectedSupplierCrmCodes = stillValid.map(s => s.value);
+
+            if (stillValid.length) {
+                supplierComponent.setSelectedList(stillValid.map(s => s.label).join(';'));
+            }
         }
     }
 
