@@ -40,27 +40,17 @@
                     <!-- Row 2 -->
                     <template if:true={loadLoc}>
                         <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-5">
-                            <!-- <lightning-combobox name="locationCode" label="Location" value={filters.locationCode}
-                                options={locationOptions} placeholder="Select a Location" onchange={handleInput} required>
-                            </lightning-combobox> -->
                             <c-multi-select-picklist label="Location(s)" required="true" show-pills="true"
                                 onvaluechange={handleChangeLocation} role="cm-picklist"></c-multi-select-picklist>
                         </div>
                     </template>
 
-
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <!-- <lightning-combobox name="starRating" label="Star Rating" value={filters.starRating}
-                            options={starOptions} onchange={handleInput}>
-                        </lightning-combobox> -->
                         <c-multi-select-picklist label="Star Rating(s)" show-pills="true"
                             onvaluechange={handleChangeStarRating} role="star-picklist"></c-multi-select-picklist>
                     </div>
 
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
-                        <!-- <lightning-combobox name="supplierStatus" label="Supplier Status" value={filters.supplierStatus}
-                            options={anyOptions} onchange={handleInput}>
-                        </lightning-combobox> -->
                         <c-multi-select-picklist label="Supplier Status(es)" show-pills="true"
                             onvaluechange={handleChangeSupplierStatus} role="status-picklist">
                         </c-multi-select-picklist>
@@ -74,9 +64,6 @@
 
                     <!-- Row 3 -->
                     <div class="slds-col slds-size_2-of-5">
-                        <!-- <lightning-input type="text" name="supplierName" label="Supplier Name"
-                            placeholder="Supplier Name" value={filters.supplierName} onchange={handleInput}>
-                        </lightning-input> -->
                         <c-multi-select-picklist label="Supplier(s)" show-pills="true"
                             onvaluechange={handleChangeSupplier} role="cms-picklist"></c-multi-select-picklist>
                     </div>
@@ -96,7 +83,6 @@
             </div>
 
             <div class="roomcfg-section">
-                <!-- <div class="roomcfg-header">Room Configuration</div> -->
                 <template if:true={validationError}>
                     <div class="room-error">{validationError}</div>
                 </template>
@@ -171,14 +157,13 @@
             </div>
         </div>
 
-
-
         <template if:true={loading}>
             <lightning-spinner alternative-text="Loading" size="medium" class="spinner-class" variant="brand">
             </lightning-spinner>
         </template>
 
-        <template if:true={groups.length}>
+        <!-- DATE-SECTION RENDERING -->
+        <template if:true={dateSections.length}>
             <div class="result-section">
                 <div class="results-header">
                     <p class="result-hadding">Hotels</p>
@@ -190,164 +175,175 @@
                         </template>
                     </div>
                 </div>
-                <template for:each={groups} for:item="grp">
-                    <div key={grp.crmCode} class="group-block">
-                        <div class="supplier-header-row" data-crm={grp.crmCode} onfocusin={activateHeaderZ}
-                            onfocusout={deactivateHeaderZ}>
-                            <div class="supplier-cell supplier-name">
-                                <strong>{grp.supplier}</strong>
-                                <template if:true={grp.ferretDestinationLocation}>
-                                    <div class="crm-sub">{grp.ferretDestinationLocation}</div>
-                                </template>
-                            </div>
 
-                            <!-- Check-in (editable per hotel) -->
-                            <div class="supplier-cell date-cell">
-                                <span class="header-suffix">Start Date</span>
-                                <lightning-input type="date" name="startDate" value={grp.uiStartDate}
-                                    data-crm={grp.crmCode} onchange={handleGroupHeaderChange} class="header-input"
-                                    variant="label-hidden">
-                                </lightning-input>
-                            </div>
-
-                            <!-- Check-out (computed, read-only in header) -->
-                            <div class="supplier-cell date-cell">
-                                <span class="header-suffix">End Date</span>
-                                <lightning-input type="date" value={grp.uiEndDate} disabled class="header-input"
-                                    variant="label-hidden">
-                                </lightning-input>
-                            </div>
-
-                            <!-- Nights (editable per hotel) -->
-                            <div class="supplier-cell integer-cell">
-                                <span class="header-suffix">Nights</span>
-                                <lightning-input type="number" name="durationNights" value={grp.uiDurationNights}
-                                    min="1" max="30" step="1" data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
-                                    class="header-input" variant="label-hidden">
-                                </lightning-input>
-                            </div>
-
-                            <!-- Rooms (editable per hotel) -->
-                            <div class="supplier-cell integer-cell">
-                                <span class="header-suffix">Rooms</span>
-                                <lightning-input type="number" name="quantityRooms" value={grp.uiQuantityRooms} min="1"
-                                    max="9" step="1" data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
-                                    class="header-input" variant="label-hidden">
-                                </lightning-input>
-                            </div>
-
-                            <!-- Locality (read-only) -->
-                            <div class="supplier-cell hotelname-cell">{grp.firstLocality}</div>
-
-                            <!-- Star rating (editable per hotel) -->
-                            <div class="supplier-cell">
-                                <span class="header-suffix">Star Rating</span>
-                                <lightning-combobox name="starRating" value={grp.uiStarRating}
-                                    options={starHeaderOptions} placeholder="Any" data-crm={grp.crmCode}
-                                    onchange={handleGroupHeaderChange} dropdown-alignment="left"
-                                    class="header-combobox">
-                                </lightning-combobox>
-                            </div>
-
-                            <!-- Per-hotel Search -->
-                            <!-- Star rating (editable per hotel) -->
-                            <div class="supplier-cell search-cell">
-                                <button class="search-btn header-search-btn" onclick={handleGroupSearch}
-                                    data-crm={grp.crmCode} disabled={grp.loading}>
-                                    <template if:true={grp.loading}>Searching…</template>
-                                    <template if:false={grp.loading}>Search</template>
-                                </button>
-                            </div>
+                <!-- Loop sections -->
+                <template for:each={dateSections} for:item="sec">
+                    <section key={sec.key} class="date-section">
+                        <div class="date-section__header">
+                            <span class="date-section__title">{sec.title}</span>
+                            <template if:true={sec.destLabel}>
+                                <span class="date-section__sep">•</span>
+                                <span class="date-section__dest" title={sec.destLabel}>{sec.destLabel}</span>
+                            </template>
                         </div>
 
-                        <div class="slds-scrollable_x">
-                            <table
-                                class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered">
-                                <thead>
-                                    <tr>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Service</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Rate Category</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Rate Description</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Child Policy</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">In Cancellation</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Nett</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Sell</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Status</div>
-                                        </th>
-                                        <th scope="col">
-                                            <div class="slds-truncate">Add</div>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template for:each={grp.items} for:item="row">
-                                        <tr key={row.id}>
-                                            <td data-label="Service">
-                                                <div class="slds-truncate">{row.service}</div>
-                                            </td>
-                                            <td data-label="Rate Category">
-                                                <div class="slds-truncate">{row.rateCategory}</div>
-                                            </td>
-                                            <td data-label="Rate Description">
-                                                <div class="slds-truncate" title={row.rateDescription}>
-                                                    {row.rateDescription}
-                                                </div>
-                                            </td>
-                                            <td data-label="Child Policy">
-                                                <div class="slds-truncate" title={row.childPolicy}>
-                                                    {row.childPolicy}
-                                                </div>
-                                            </td>
+                        <!-- Groups inside a section -->
+                        <template for:each={sec.groups} for:item="grp">
+                            <div key={grp.crmCode} class="group-block">
+                                <div class="supplier-header-row" data-crm={grp.crmCode} onfocusin={activateHeaderZ}
+                                    onfocusout={deactivateHeaderZ}>
+                                    <div class="supplier-cell supplier-name">
+                                        <strong>{grp.supplier}</strong>
+                                        <template if:true={grp.ferretDestinationLocation}>
+                                            <div class="crm-sub">{grp.ferretDestinationLocation}</div>
+                                        </template>
+                                    </div>
 
-                                            <td data-label="In Cancellation">
-                                                <div class="slds-truncate">{row.inCancellation}</div>
-                                            </td>
-                                            <td data-label="Nett">
-                                                <div class="slds-truncate">{row.nett}</div>
-                                            </td>
-                                            <td data-label="Sell">
-                                                <div class="slds-truncate">{row.sell}</div>
-                                            </td>
-                                            <td data-label="Status">
-                                                <div class={row.statusClass}>{row.status}</div>
-                                            </td>
-                                            <td data-label="Select" class="select-cell">
-                                                <lightning-input type="checkbox" variant="label-hidden"
-                                                    data-row-key={row.selKey} checked={row.isSelected}
-                                                    disabled={row.addDisabled} onchange={handleRowCheckboxChange}>
-                                                </lightning-input>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                    <template if:false={grp.items.length}>
-                                        <tr>
-                                            <td colspan="9" class="slds-text-align_center slds-text-color_weak">No
-                                                options</td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                                    <div class="supplier-cell date-cell">
+                                        <span class="header-suffix">Start Date</span>
+                                        <lightning-input type="date" name="startDate" value={grp.uiStartDate}
+                                            data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
+                                            class="header-input" variant="label-hidden">
+                                        </lightning-input>
+                                    </div>
+
+                                    <div class="supplier-cell date-cell">
+                                        <span class="header-suffix">End Date</span>
+                                        <lightning-input type="date" value={grp.uiEndDate} disabled class="header-input"
+                                            variant="label-hidden">
+                                        </lightning-input>
+                                    </div>
+
+                                    <div class="supplier-cell integer-cell">
+                                        <span class="header-suffix">Nights</span>
+                                        <lightning-input type="number" name="durationNights"
+                                            value={grp.uiDurationNights} min="1" max="30" step="1"
+                                            data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
+                                            class="header-input" variant="label-hidden">
+                                        </lightning-input>
+                                    </div>
+
+                                    <div class="supplier-cell integer-cell">
+                                        <span class="header-suffix">Rooms</span>
+                                        <lightning-input type="number" name="quantityRooms" value={grp.uiQuantityRooms}
+                                            min="1" max="9" step="1" data-crm={grp.crmCode}
+                                            onchange={handleGroupHeaderChange} class="header-input"
+                                            variant="label-hidden">
+                                        </lightning-input>
+                                    </div>
+
+                                    <div class="supplier-cell hotelname-cell">{grp.firstLocality}</div>
+
+                                    <div class="supplier-cell">
+                                        <span class="header-suffix">Star Rating</span>
+                                        <lightning-combobox name="starRating" value={grp.uiStarRating}
+                                            options={starHeaderOptions} placeholder="Any" data-crm={grp.crmCode}
+                                            onchange={handleGroupHeaderChange} dropdown-alignment="left"
+                                            class="header-combobox">
+                                        </lightning-combobox>
+                                    </div>
+
+                                    <div class="supplier-cell search-cell">
+                                        <button class="search-btn header-search-btn" onclick={handleGroupSearch}
+                                            data-crm={grp.crmCode} disabled={grp.loading}>
+                                            <template if:true={grp.loading}>Searching…</template>
+                                            <template if:false={grp.loading}>Search</template>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="slds-scrollable_x">
+                                    <table
+                                        class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_col-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Service</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Rate Category</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Rate Description</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Child Policy</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">In Cancellation</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Nett</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Sell</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Status</div>
+                                                </th>
+                                                <th scope="col">
+                                                    <div class="slds-truncate">Add</div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template for:each={grp.items} for:item="row">
+                                                <tr key={row.id}>
+                                                    <td data-label="Service">
+                                                        <div class="slds-truncate">{row.service}</div>
+                                                    </td>
+                                                    <td data-label="Rate Category">
+                                                        <div class="slds-truncate">{row.rateCategory}</div>
+                                                    </td>
+                                                    <td data-label="Rate Description">
+                                                        <div class="slds-truncate" title={row.rateDescription}>
+                                                            {row.rateDescription}
+                                                        </div>
+                                                    </td>
+                                                    <td data-label="Child Policy">
+                                                        <div class="slds-truncate" title={row.childPolicy}>
+                                                            {row.childPolicy}
+                                                        </div>
+                                                    </td>
+                                                    <td data-label="In Cancellation">
+                                                        <div class="slds-truncate">{row.inCancellation}</div>
+                                                    </td>
+                                                    <td data-label="Nett">
+                                                        <div class="slds-truncate">{row.nett}</div>
+                                                    </td>
+                                                    <td data-label="Sell">
+                                                        <div class="slds-truncate">{row.sell}</div>
+                                                    </td>
+                                                    <td data-label="Status">
+                                                        <div class={row.statusClass}>{row.status}</div>
+                                                    </td>
+                                                    <td data-label="Select" class="select-cell">
+                                                        <lightning-input type="checkbox" variant="label-hidden"
+                                                            data-row-key={row.selKey} checked={row.isSelected}
+                                                            disabled={row.addDisabled}
+                                                            onchange={handleRowCheckboxChange}>
+                                                        </lightning-input>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            <template if:false={grp.items.length}>
+                                                <tr>
+                                                    <td colspan="9" class="slds-text-align_center slds-text-color_weak">
+                                                        No options
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+                    </section>
                 </template>
             </div>
         </template>
 
+        <!-- No results message (dateSections-aware) -->
         <template if:true={showNoHotels}>
             <div class="result-section">
                 <div class="no-results">

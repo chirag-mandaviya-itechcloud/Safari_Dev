@@ -83,7 +83,7 @@ body {
   background: #fff;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
-  margin: 10px 0 16px;
+  margin: 10px 15px 16px;
   overflow: hidden;
 }
 
@@ -428,4 +428,31 @@ td .slds-truncate {
   font-size: 0.8rem;
   color: #666;
   margin-top: 2px;
+}
+
+/* Date section header now shows "dates • destinations" */
+.date-section { margin-top: 12px; }
+
+.date-section__header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #fff5ee;
+  border: 1px solid #ffd0ad;
+  color: #e65c00;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  flex-wrap: wrap;            /* let long destination lists wrap nicely */
+}
+
+.date-section__title { font-size: 0.95rem; }
+.date-section__sep   { padding: 0 .25rem; }
+.date-section__dest  {
+  color: #333;
+  font-weight: 500;
+  /* optional ellipsis if you DON'T want wrapping:
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;
+  */
 }

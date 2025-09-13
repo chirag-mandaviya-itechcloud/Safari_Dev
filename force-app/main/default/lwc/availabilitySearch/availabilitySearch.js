@@ -79,6 +79,7 @@ export default class AvailabilitySearch extends LightningElement {
     @track starHeaderOptions = [];
     @track selectedKeys = {};
     ferretDestinations = {};
+    @track dateSections = [];
 
     @track roomConfigs = [];
     roomTypeOptions = [
@@ -358,6 +359,8 @@ export default class AvailabilitySearch extends LightningElement {
         this.rows = mergedRows;
         this.groups = this.groupBySupplier(mergedRows);
 
+        this.buildDateSections();
+
         this.hasSearched = true;
     }
 
@@ -401,6 +404,108 @@ export default class AvailabilitySearch extends LightningElement {
         const nights = Math.max(1, days); // checkout = start + nights + 1
         return String(nights);
     }
+
+    makeDateKey(startIso, endIso) {
+        const s = startIso || '';
+        const e = endIso || '';
+        return `${s}|${e}`; // stable key to bucket groups
+    }
+
+    formatRangeTitle(startIso, endIso) {
+        if (!startIso || !endIso) return 'No dates';
+        const s = new Date(`${startIso}T00:00:00`);
+        const e = new Date(`${endIso}T00:00:00`);
+        if (isNaN(s) || isNaN(e)) return 'No dates';
+
+        // Examples: "11–15 Sep 2025" if same month/year
+        // Otherwise: "28 Sep – 02 Oct 2025"
+        const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+
+        const day = (d) => d.toLocaleDateString('en-GB', { day: '2-digit' });
+        const mon = (d) => d.toLocaleDateString('en-GB', { month: 'short' });
+        const yr = (d) => d.getFullYear();
+
+        if (sameMonth) {
+            return `${day(s)}-${day(e)} ${mon(e)} ${yr(e)}`;
+        }
+        return `${day(s)} ${mon(s)} - ${day(e)} ${mon(e)} ${yr(e)}`;
+    }
+
+    buildDateSections() {
+        const buckets = new Map(); // key -> { key, start, end, title, groups: [], parentDests: Set }
+
+        (this.groups || []).forEach(g => {
+            const start = g.uiStartDate || '';
+            const end = g.uiEndDate || '';
+            const key = this.makeDateKey(start, end);
+
+            if (!buckets.has(key)) {
+                buckets.set(key, {
+                    key,
+                    start,
+                    end,
+                    title: this.formatRangeTitle(start, end),
+                    groups: [],
+                    parentDests: new Set()
+                });
+            }
+
+            const sec = buckets.get(key);
+            sec.groups.push(g);
+
+            // Use your normalized ferret destination, fallback to firstLocality
+            const rawDest = (g.ferretDestinationLocation || g.firstLocality || '').trim();
+            const parent = this.pickParentDestination(rawDest);
+            if (parent) sec.parentDests.add(parent);
+        });
+
+        // Sort sections by start/end date; empty/no-date last
+        const parse = (iso) => (iso ? Date.parse(`${iso}T00:00:00`) : Number.POSITIVE_INFINITY);
+        const sections = Array.from(buckets.values())
+            .sort((a, b) => {
+                const sa = parse(a.start), sb = parse(b.start);
+                if (sa !== sb) return sa - sb;
+                const ea = parse(a.end), eb = parse(b.end);
+                return ea - eb;
+            })
+            .map(sec => {
+                const list = Array.from(sec.parentDests).sort((x, y) => x.localeCompare(y));
+
+                // Build a readable label:
+                // 1 item  -> "Kruger National Park"
+                // 2-3     -> "A, B"
+                // 4+      -> "A, B +2 more"
+                let destLabel = '';
+                if (list.length === 1) destLabel = list[0];
+                else if (list.length === 2) destLabel = `${list[0]}, ${list[1]}`;
+                else if (list.length === 3) destLabel = `${list[0]}, ${list[1]}, ${list[2]}`;
+                else if (list.length >= 4) destLabel = `${list[0]}, ${list[1]} +${list.length - 2} more`;
+
+                return { ...sec, destLabel };
+            });
+
+        this.dateSections = sections;
+    }
+
+
+    normalizeDestinationParts(str) {
+        if (!str) return [];
+        // supports "A | B | C" and "A, B, C" just in case
+        return String(str)
+            .split(/\s*\|\s*|\s*,\s*/g)
+            .map(s => s.trim())
+            .filter(Boolean);
+    }
+
+    pickParentDestination(str) {
+        const parts = this.normalizeDestinationParts(str);
+        if (parts.length >= 3) return parts[parts.length - 2]; // parent above country
+        if (parts.length === 2) return parts[0];                // region above country
+        return parts[0] || '';
+    }
+
+
+
 
     handleInput = (e) => {
         const { name, value } = e.target;
@@ -1158,6 +1263,8 @@ export default class AvailabilitySearch extends LightningElement {
             };
         });
 
+        this.buildDateSections();
+
         console.log('Group edits:', this.groupEdits);
     };
 
@@ -1315,6 +1422,8 @@ export default class AvailabilitySearch extends LightningElement {
                     uiStarRating: effHdr.starRating || ''
                 };
             });
+
+            this.buildDateSections();
 
             // 10) Refresh the flat rows for this CRM only (others unchanged)
             const others = (this.rows || []).filter(r => r.crmCode !== crm);
