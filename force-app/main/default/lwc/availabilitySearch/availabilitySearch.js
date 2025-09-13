@@ -35,6 +35,8 @@ export default class AvailabilitySearch extends LightningElement {
     channelName = '/event/Hotel_Availability_Event__e';
     subscription = null;
 
+    DAY_MS = 24 * 60 * 60 * 1000;
+
     selectedLocations = [];
     selectableHotels = [];
     selectedSuppliers = [];
@@ -405,6 +407,28 @@ export default class AvailabilitySearch extends LightningElement {
         return String(nights);
     }
 
+    parseMidnight(iso) {
+        if (!iso) return null;
+        const d = new Date(`${iso}T00:00:00`);
+        return isNaN(d) ? null : d;
+    }
+
+    diffDays(fromIso, toIso) {
+        const a = this.parseMidnight(fromIso);
+        const b = this.parseMidnight(toIso);
+        if (!a || !b) return null;
+        return Math.round((b - a) / this.DAY_MS);
+    }
+
+    computeDayLabel(tripStartIso, secStartIso, secEndIso, endInclusive = true) {
+        if (!tripStartIso || !secStartIso || !secEndIso) return '';
+        const startIdx = (this.diffDays(tripStartIso, secStartIso) ?? -1) + 1;
+        let endIdx = (this.diffDays(tripStartIso, secEndIso) ?? -1) + 1;
+        if (!endInclusive) endIdx -= 1; // toggle if you want nights-only
+        if (startIdx < 1 || endIdx < startIdx) return '';
+        return `Day ${startIdx}-${endIdx}`;
+    }
+
     makeDateKey(startIso, endIso) {
         const s = startIso || '';
         const e = endIso || '';
@@ -433,6 +457,7 @@ export default class AvailabilitySearch extends LightningElement {
 
     buildDateSections() {
         const buckets = new Map(); // key -> { key, start, end, title, groups: [], parentDests: Set }
+        let earliestStart = null;
 
         (this.groups || []).forEach(g => {
             const start = g.uiStartDate || '';
@@ -449,43 +474,46 @@ export default class AvailabilitySearch extends LightningElement {
                     parentDests: new Set()
                 });
             }
+            buckets.get(key).groups.push(g);
 
-            const sec = buckets.get(key);
-            sec.groups.push(g);
-
-            // Use your normalized ferret destination, fallback to firstLocality
+            // collect parent destination
             const rawDest = (g.ferretDestinationLocation || g.firstLocality || '').trim();
             const parent = this.pickParentDestination(rawDest);
-            if (parent) sec.parentDests.add(parent);
+            if (parent) buckets.get(key).parentDests.add(parent);
+
+            // track earliest section start (fallback if global trip start absent)
+            const s = this.parseMidnight(start);
+            if (s && (!earliestStart || s < earliestStart)) earliestStart = s;
         });
 
-        // Sort sections by start/end date; empty/no-date last
+        // Sort sections by start/end date (empty last)
         const parse = (iso) => (iso ? Date.parse(`${iso}T00:00:00`) : Number.POSITIVE_INFINITY);
-        const sections = Array.from(buckets.values())
-            .sort((a, b) => {
-                const sa = parse(a.start), sb = parse(b.start);
-                if (sa !== sb) return sa - sb;
-                const ea = parse(a.end), eb = parse(b.end);
-                return ea - eb;
-            })
-            .map(sec => {
-                const list = Array.from(sec.parentDests).sort((x, y) => x.localeCompare(y));
+        const sorted = Array.from(buckets.values()).sort((a, b) => {
+            const sa = parse(a.start), sb = parse(b.start);
+            if (sa !== sb) return sa - sb;
+            const ea = parse(a.end), eb = parse(b.end);
+            return ea - eb;
+        });
 
-                // Build a readable label:
-                // 1 item  -> "Kruger National Park"
-                // 2-3     -> "A, B"
-                // 4+      -> "A, B +2 more"
-                let destLabel = '';
-                if (list.length === 1) destLabel = list[0];
-                else if (list.length === 2) destLabel = `${list[0]}, ${list[1]}`;
-                else if (list.length === 3) destLabel = `${list[0]}, ${list[1]}, ${list[2]}`;
-                else if (list.length >= 4) destLabel = `${list[0]}, ${list[1]} +${list.length - 2} more`;
+        // Trip start anchor: prefer global filters.startDate; fallback to earliest section start
+        const tripStartIso = this.filters?.startDate || (sorted[0]?.start ?? '');
 
-                return { ...sec, destLabel };
-            });
+        this.dateSections = sorted.map(sec => {
+            // destinations (parent-only, compact)
+            const list = Array.from(sec.parentDests).sort((x, y) => x.localeCompare(y));
+            let destLabel = '';
+            if (list.length === 1) destLabel = list[0];
+            else if (list.length === 2) destLabel = `${list[0]}, ${list[1]}`;
+            else if (list.length === 3) destLabel = `${list[0]}, ${list[1]}, ${list[2]}`;
+            else if (list.length >= 4) destLabel = `${list[0]}, ${list[1]} +${list.length - 2} more`;
 
-        this.dateSections = sections;
+            // NEW: day span label (end treated as inclusive)
+            const dayLabel = this.computeDayLabel(tripStartIso, sec.start, sec.end, /*endInclusive*/ true);
+
+            return { ...sec, destLabel, dayLabel };
+        });
     }
+
 
 
     normalizeDestinationParts(str) {
@@ -772,6 +800,8 @@ export default class AvailabilitySearch extends LightningElement {
             console.log('Request payload:', JSON.stringify(requestPayload));
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
+
+            console.log('API raw response:', raw);
 
             this.appendResultsFromRaw(raw, "Search");
         } catch (err) {

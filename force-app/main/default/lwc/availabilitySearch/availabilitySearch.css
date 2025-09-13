@@ -456,3 +456,8 @@ td .slds-truncate {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;
   */
 }
+
+.date-section__days {
+  color: #333;
+  font-weight: 500;
+}

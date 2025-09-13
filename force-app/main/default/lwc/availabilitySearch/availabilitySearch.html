@@ -180,7 +180,13 @@
                 <template for:each={dateSections} for:item="sec">
                     <section key={sec.key} class="date-section">
                         <div class="date-section__header">
-                            <span class="date-section__title">{sec.title}</span>
+                            <span class="date-section__days">{sec.dayLabel}</span>
+
+                            <template if:true={sec.dayLabel}>
+                                <span class="date-section__sep">•</span>
+                                <span class="date-section__title">{sec.title}</span>
+                            </template>
+
                             <template if:true={sec.destLabel}>
                                 <span class="date-section__sep">•</span>
                                 <span class="date-section__dest" title={sec.destLabel}>{sec.destLabel}</span>
