@@ -8,6 +8,7 @@ import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
 import getLocationOptions from '@salesforce/apex/AvailabilitySearchController.getLocationOptions';
 import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedLocationsWithCodes';
 import getFerretDestinationFromCrmCode from '@salesforce/apex/AvailabilitySearchController.getFerretDestinationFromCrmCode';
+import getOptsExternalIds from '@salesforce/apex/AvailabilitySearchController.getOptsExternalIds';
 import getHotelsFromLocations from '@salesforce/apex/AvailabilitySearchController.getHotelsFromLocations';
 import SaveQuoteLineItem from '@salesforce/apex/QuoteLineItemController.saveQuoteLineItem';
 import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassengerTypeCounts';
@@ -73,6 +74,7 @@ export default class AvailabilitySearch extends LightningElement {
     @track loadAttractions = false;
     @track supplierRecordTypeId;
     @track attractionsOptions = [];
+    optExternalIds = [];
 
     @track groupEdits = {};
     lastSelectedLocationCodes = [];
@@ -141,6 +143,16 @@ export default class AvailabilitySearch extends LightningElement {
             this.ferretDestinations = data;
         } else if (error) {
             console.error('Error retrieving Ferret Destinations: ', error);
+        }
+    }
+
+    @wire(getOptsExternalIds, {})
+    getExternalIds({ data, error }) {
+        if (data) {
+            console.log('Retrieved External IDs: ', data);
+            this.optExternalIds = data;
+        } else if (error) {
+            console.error('Error retrieving External IDs: ', error);
         }
     }
 

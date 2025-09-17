@@ -274,6 +274,13 @@ td[data-label="Rate Description"] .slds-truncate {
     text-overflow: ellipsis;
 }
 
+td[data-label="Rate Category"] .slds-truncate {
+    max-width: 6vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Service column */
 td[data-label="Service"] .slds-truncate {
     max-width: 12vw;
