@@ -320,6 +320,10 @@ export default class AvailabilitySearch extends LightningElement {
             if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
                 filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
             }
+
+            const searchStart = this.filters.startDate || '';
+            const searchNights = String(this.filters.durationNights || '1');
+            this.freezeGroupDatesForSearch(filtered, searchStart, searchNights);
         }
 
         if (source === "Agent" && (meta?.peStart || meta?.peEnd)) {
@@ -334,7 +338,6 @@ export default class AvailabilitySearch extends LightningElement {
                 const endDate = startDate ? this.computeEndDate(startDate, durationNights) : '';
 
                 this.groupEdits[crm] = {
-                    // overwrite this hotel's header to PE dates every time it appears in a PE
                     ...this.groupEdits[crm],
                     startDate,
                     durationNights,
@@ -457,13 +460,32 @@ export default class AvailabilitySearch extends LightningElement {
         return `${day(s)} ${mon(s)} - ${day(e)} ${mon(e)} ${yr(e)}`;
     }
 
+    freezeGroupDatesForSearch(rows, searchStart, searchNights) {
+        const start = searchStart || '';
+        const nights = String(searchNights || '1');
+        const end = start ? this.computeEndDate(start, nights) : '';
+
+        const crms = new Set(rows.map(r => r.crmCode).filter(Boolean));
+        crms.forEach(crm => {
+            if (!this.groupEdits[crm]) {
+                this.groupEdits[crm] = {
+                    startDate: start,
+                    durationNights: nights,
+                    endDate: end
+                };
+            }
+        });
+    }
+
     buildDateSections() {
         const buckets = new Map();
         let earliestStart = null;
 
         (this.groups || []).forEach(g => {
-            const start = g.uiStartDate || '';
-            const end = g.uiEndDate || '';
+            const eff = this.getEffectiveGroupFilters(g.crmCode);
+            const start = g.uiStartDate || eff.startDate || '';
+            const end = g.uiEndDate || eff.endDate || '';
+
             const key = this.makeDateKey(start, end);
 
             if (!buckets.has(key)) {
@@ -487,6 +509,7 @@ export default class AvailabilitySearch extends LightningElement {
         });
 
         const parse = (iso) => (iso ? Date.parse(`${iso}T00:00:00`) : Number.POSITIVE_INFINITY);
+
         const sorted = Array.from(buckets.values()).sort((a, b) => {
             const sa = parse(a.start), sb = parse(b.start);
             if (sa !== sb) return sa - sb;
@@ -494,7 +517,11 @@ export default class AvailabilitySearch extends LightningElement {
             return ea - eb;
         });
 
-        const tripStartIso = this.filters?.startDate || (sorted[0]?.start ?? '');
+        const tripStartIso =
+            earliestStart
+                ? new Date(earliestStart.getTime() - (earliestStart.getTimezoneOffset() * 60000))
+                    .toISOString().slice(0, 10)
+                : (sorted.find(sec => sec.start)?.start || this.filters?.startDate || '');
 
         this.dateSections = sorted.map(sec => {
             const list = Array.from(sec.parentDests).sort((x, y) => x.localeCompare(y));
