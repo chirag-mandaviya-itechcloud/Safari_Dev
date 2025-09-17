@@ -139,7 +139,7 @@ export default class AvailabilitySearch extends LightningElement {
     @wire(getFerretDestinationFromCrmCode, {})
     crmCodeToFerretDestinations({ data, error }) {
         if (data) {
-            console.log('Retrieved Ferret Destinations: ', data);
+            // console.log('Retrieved Ferret Destinations: ', data);
             this.ferretDestinations = data;
         } else if (error) {
             console.error('Error retrieving Ferret Destinations: ', error);
@@ -149,7 +149,7 @@ export default class AvailabilitySearch extends LightningElement {
     @wire(getOptsExternalIds, {})
     getExternalIds({ data, error }) {
         if (data) {
-            console.log('Retrieved External IDs: ', data);
+            // console.log('Retrieved External IDs: ', data);
             this.optExternalIds = data;
         } else if (error) {
             console.error('Error retrieving External IDs: ', error);
@@ -275,6 +275,18 @@ export default class AvailabilitySearch extends LightningElement {
         }
     }
 
+    get optIdAllowlist() {
+        // Normalize to UPPER + trimmed for robust comparisons
+        return new Set((this.optExternalIds || []).map(x => String(x).trim().toUpperCase()));
+    }
+
+    isOptAllowed(optId) {
+        const id = (optId ?? '').toString().trim().toUpperCase();
+        const list = this.optIdAllowlist;
+        // if list is empty, nothing is allowed
+        return id && list.has(id);
+    }
+
     handlePeMessage = (message) => {
         console.log('PE message received: ', message);
         try {
@@ -309,12 +321,13 @@ export default class AvailabilitySearch extends LightningElement {
     appendResultsFromRaw(raw, source, meta = { peStart: '', peEnd: '' }) {
         const fetchedRows = this.transformApiData(raw);
 
+        let filtered = fetchedRows.filter(r => this.isOptAllowed(r.optId));
+
         if (!this.lastSelectedLocationCodes || this.lastSelectedLocationCodes.length === 0) {
-            const derived = [...new Set(fetchedRows.map(r => r.locCode).filter(Boolean))];
+            const derived = [...new Set(filtered.map(r => r.locCode).filter(Boolean))];
             if (derived.length > 0) this.lastSelectedLocationCodes = derived;
         }
 
-        let filtered = fetchedRows;
         if (source === "Search") {
             const live = this.filters.liveAvailability;
             filtered = filtered.filter(r => {
@@ -1409,6 +1422,8 @@ export default class AvailabilitySearch extends LightningElement {
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
             let newRows = this.transformApiData(raw).filter(r => r.crmCode === crm);
+
+            newRows = newRows.filter(r => this.isOptAllowed(r.optId));
 
             // if (this.filters.liveAvailability === 'OK') {
             //     newRows = newRows.filter(r => r.status === 'Available');
