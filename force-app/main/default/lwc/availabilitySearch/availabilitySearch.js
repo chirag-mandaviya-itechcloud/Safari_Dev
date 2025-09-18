@@ -1037,6 +1037,8 @@ export default class AvailabilitySearch extends LightningElement {
                 it.selKey === rowKey ? { ...it, isSelected: checked } : it
             )
         }));
+
+        this.buildDateSections();
     };
 
     handleClearSelection = () => {
@@ -1054,6 +1056,8 @@ export default class AvailabilitySearch extends LightningElement {
                 selectButtonClass: this.computeSelectClass(false)
             }))
         }));
+
+        this.buildDateSections();
     };
 
     extractCrm(optId) {
@@ -1254,6 +1258,7 @@ export default class AvailabilitySearch extends LightningElement {
             }
         } finally {
             this.loading = false;
+            this.buildDateSections();
             if (postToast) this.showToast(postToast.title, postToast.message, postToast.variant);
         }
     };
