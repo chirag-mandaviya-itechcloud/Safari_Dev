@@ -98,11 +98,11 @@ export default class AvailabilitySearch extends LightningElement {
         this.starHeaderOptions = [...(this.starOptions || [])];
         this.initPeSubscription();
         this.syncRoomsToQuantity(this.filters.quantityRooms);
-    }
+    };
 
     disconnectedCallback() {
         this.teardownPeSubscription();
-    }
+    };
 
     @wire(getObjectInfo, { objectApiName: ACCOUNT_OBJECT })
     accountMetadata({ data, error }) {
@@ -119,7 +119,7 @@ export default class AvailabilitySearch extends LightningElement {
         } else if (error) {
             console.error('Error fetching Account object info: ', error);
         }
-    }
+    };
 
     @wire(getPicklistValues, {
         recordTypeId: '$supplierRecordTypeId',
@@ -198,7 +198,7 @@ export default class AvailabilitySearch extends LightningElement {
                 );
             }
         }
-    }
+    };
 
     loadLocationOptions() {
         this.loading = true;
@@ -213,7 +213,7 @@ export default class AvailabilitySearch extends LightningElement {
         }).finally(() => {
             this.loading = false;
         });
-    }
+    };
 
     loadPassengerCounts() {
         this.loading = true;
@@ -228,7 +228,7 @@ export default class AvailabilitySearch extends LightningElement {
         }).finally(() => {
             this.loading = false;
         });
-    }
+    };
 
     loadTravelDates() {
         this.loading = true;
@@ -242,7 +242,7 @@ export default class AvailabilitySearch extends LightningElement {
         }).finally(() => {
             this.loading = false;
         });
-    }
+    };
 
     initPeSubscription() {
         try {
@@ -260,7 +260,7 @@ export default class AvailabilitySearch extends LightningElement {
         } catch (e) {
             // console.error('PE subscribe failed', e);
         }
-    }
+    };
 
     teardownPeSubscription() {
         try {
@@ -273,19 +273,18 @@ export default class AvailabilitySearch extends LightningElement {
         } catch (e) {
             // console.error('PE unsubscribe failed', e);
         }
-    }
+    };
 
     get optIdAllowlist() {
-        // Normalize to UPPER + trimmed for robust comparisons
         return new Set((this.optExternalIds || []).map(x => String(x).trim().toUpperCase()));
-    }
+    };
 
     isOptAllowed(optId) {
         const id = (optId ?? '').toString().trim().toUpperCase();
         const list = this.optIdAllowlist;
         // if list is empty, nothing is allowed
         return id && list.has(id);
-    }
+    };
 
     handlePeMessage = (message) => {
         console.log('PE message received: ', message);
@@ -396,7 +395,7 @@ export default class AvailabilitySearch extends LightningElement {
         this.buildDateSections();
 
         this.hasSearched = true;
-    }
+    };
 
     get serviceTypeOptions() {
         return [
@@ -406,29 +405,30 @@ export default class AvailabilitySearch extends LightningElement {
             { label: 'Overland Tours', value: 'OV' },
             { label: 'Short-break Packages', value: 'PK' },
         ];
-    }
+    };
+
     get durationOptions() {
         return Array.from({ length: 30 }, (_, i) => ({ label: String(i + 1), value: String(i + 1) }));
-    }
+    };
     get roomQtyOptions() {
         return Array.from({ length: 9 }, (_, i) => ({ label: String(i + 1), value: String(i + 1) }));
-    }
+    };
     get liveAvailOptions() {
         return [
             { label: 'Available', value: 'OK' },
             { label: 'On Request', value: 'RQ' },
         ];
-    }
+    };
 
     get selectedCount() {
         return Object.keys(this.selectedKeys).filter(k => this.selectedKeys[k]).length;
-    }
-    get hasSelection() { return this.selectedCount > 0; }
-    get disableSave() { return !this.hasSelection; }
+    };
+    get hasSelection() { return this.selectedCount > 0; };
+    get disableSave() { return !this.hasSelection; };
 
     computeSelectClass(isSelected) {
         return `select-button${isSelected ? ' selected' : ''}`;
-    }
+    };
 
     computeNights(startIso, endIso) {
         if (!startIso || !endIso) return '';
@@ -437,20 +437,20 @@ export default class AvailabilitySearch extends LightningElement {
         const days = Math.max(1, Math.round((e - s) / (1000 * 60 * 60 * 24)));
         const nights = Math.max(1, days); // checkout = start + nights + 1
         return String(nights);
-    }
+    };
 
     parseMidnight(iso) {
         if (!iso) return null;
         const d = new Date(`${iso}T00:00:00`);
         return isNaN(d) ? null : d;
-    }
+    };
 
     diffDays(fromIso, toIso) {
         const a = this.parseMidnight(fromIso);
         const b = this.parseMidnight(toIso);
         if (!a || !b) return null;
         return Math.round((b - a) / this.DAY_MS);
-    }
+    };
 
     computeDayLabel(tripStartIso, secStartIso, secEndIso, endInclusive = true) {
         if (!tripStartIso || !secStartIso || !secEndIso) return '';
@@ -459,13 +459,13 @@ export default class AvailabilitySearch extends LightningElement {
         if (!endInclusive) endIdx -= 1;
         if (startIdx < 1 || endIdx < startIdx) return '';
         return `Day ${startIdx}-${endIdx}`;
-    }
+    };
 
     makeDateKey(startIso, endIso) {
         const s = startIso || '';
         const e = endIso || '';
         return `${s}|${e}`;
-    }
+    };
 
     formatRangeTitle(startIso, endIso) {
         if (!startIso || !endIso) return 'No dates';
@@ -483,7 +483,7 @@ export default class AvailabilitySearch extends LightningElement {
             return `${day(s)}-${day(e)} ${mon(e)} ${yr(e)}`;
         }
         return `${day(s)} ${mon(s)} - ${day(e)} ${mon(e)} ${yr(e)}`;
-    }
+    };
 
     freezeGroupDatesForSearch(rows, searchStart, searchNights) {
         const start = searchStart || '';
@@ -500,7 +500,7 @@ export default class AvailabilitySearch extends LightningElement {
                 };
             }
         });
-    }
+    };
 
     buildDateSections() {
         const buckets = new Map();
@@ -560,7 +560,7 @@ export default class AvailabilitySearch extends LightningElement {
 
             return { ...sec, destLabel, dayLabel };
         });
-    }
+    };
 
     normalizeDestinationParts(str) {
         if (!str) return [];
@@ -568,14 +568,14 @@ export default class AvailabilitySearch extends LightningElement {
             .split(/\s*\|\s*|\s*,\s*/g)
             .map(s => s.trim())
             .filter(Boolean);
-    }
+    };
 
     pickParentDestination(str) {
         const parts = this.normalizeDestinationParts(str);
         if (parts.length >= 3) return parts[parts.length - 2];
         if (parts.length === 2) return parts[0];
         return parts[0] || '';
-    }
+    };
 
     handleInput = (e) => {
         const { name, value } = e.target;
@@ -598,9 +598,10 @@ export default class AvailabilitySearch extends LightningElement {
             this.syncRoomsToQuantity(value);
         }
     };
+
     makeDefaultRoom(idx) {
         return { id: idx + 1, roomType: 'DOUBLE AVAIL', adults: 0, children: 0, infants: 0, passengers: 0 };
-    }
+    };
 
     syncRoomsToQuantity(qty) {
         const n = Math.max(1, parseInt(qty, 10) || 1);
@@ -640,7 +641,7 @@ export default class AvailabilitySearch extends LightningElement {
             passengers: (parseInt(r.adults) || 0) + (parseInt(r.children) || 0) + (parseInt(r.infants) || 0)
         }));
         this.validationError = '';
-    }
+    };
 
     handleRoomChange = (e) => {
         const idx = Number(e.currentTarget.dataset.index);
@@ -690,7 +691,7 @@ export default class AvailabilitySearch extends LightningElement {
                 RoomType: 'TW'
             }
         }));
-    }
+    };
 
     buildQliRoomConfigurations(defaultRow) {
         return (this.roomConfigs || []).map((rc, i) => {
@@ -709,7 +710,7 @@ export default class AvailabilitySearch extends LightningElement {
                 order: i + 1
             };
         });
-    }
+    };
 
     computeEndDate(startIso, nights) {
         if (!startIso) return '';
@@ -719,7 +720,7 @@ export default class AvailabilitySearch extends LightningElement {
         d.setDate(d.getDate() + nightsInt + 1);
 
         return d.toISOString().slice(0, 10);
-    }
+    };
 
     sumRooms(rooms = this.roomConfigs) {
         return rooms.reduce((a, r) => {
@@ -728,7 +729,7 @@ export default class AvailabilitySearch extends LightningElement {
             a.infants += parseInt(r.infants) || 0;
             return a;
         }, { adults: 0, children: 0, infants: 0 });
-    }
+    };
 
     validateRoomTotals(rooms = this.roomConfigs) {
         const s = this.sumRooms(rooms);
@@ -751,7 +752,7 @@ export default class AvailabilitySearch extends LightningElement {
             return false;
         }
         return true;
-    }
+    };
 
     validateRoomTotalsExact(rooms = this.roomConfigs) {
         const s = this.sumRooms(rooms);
@@ -770,7 +771,14 @@ export default class AvailabilitySearch extends LightningElement {
             return false;
         }
         return true;
-    }
+    };
+
+    decodeHtml(str = '') {
+        // Fast + safe HTML entity decode
+        const txt = document.createElement('textarea');
+        txt.innerHTML = str;
+        return txt.value;
+    };
 
     async handleSearch() {
         this.loading = true;
@@ -850,7 +858,7 @@ export default class AvailabilitySearch extends LightningElement {
             this.loading = false;
             this.hasSearched = true;
         }
-    }
+    };
 
     transformApiData(apiPayload) {
         const payload = (typeof apiPayload === 'string') ? JSON.parse(apiPayload) : apiPayload;
@@ -866,9 +874,9 @@ export default class AvailabilitySearch extends LightningElement {
         const out = [];
         options.forEach((opt) => {
             const gen = opt?.OptGeneral || {};
-            const supplier = gen?.SupplierName || '';
-            const desc = gen?.Description || '';
-            const locality = gen?.LocalityDescription || gen?.Locality || '';
+            const supplier = this.decodeHtml(gen?.SupplierName || '');
+            const desc = this.decodeHtml(gen?.Description || '');
+            const locality = this.decodeHtml(gen?.LocalityDescription || gen?.Locality || '');
             const childPolicy = this.composeChildPolicy(gen);
             const supplierStatus = gen?.DBAnalysisCode1 || '';
             const starRating = gen?.ClassDescription || '';
@@ -888,7 +896,7 @@ export default class AvailabilitySearch extends LightningElement {
         });
 
         return out;
-    }
+    };
 
     mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }, supplierStatus, starRating) {
         const availabilityCode = (stay?.Availability || '').toUpperCase();
@@ -898,16 +906,17 @@ export default class AvailabilitySearch extends LightningElement {
         const nett = this.formatMoney(stay?.AgentPrice ?? stay?.TotalPrice);
         const sell = this.formatMoney(stay?.TotalPrice ?? stay?.AgentPrice);
 
-        const rateText =
+        const rateText = this.decodeHtml(
             (typeof stay?.RateText === 'string' && stay.RateText) ||
             (stay?.ExternalRateDetails?.ExtRatePlanDescr) ||
-            '';
+            ''
+        );
 
-        const externalDescr = stay?.ExternalRateDetails?.ExtOptionDescr || '';
+        const externalDescr = this.decodeHtml(stay?.ExternalRateDetails?.ExtOptionDescr || '');
         const roomType = stay?.RoomList?.RoomType || 'TWIN AVAIL';
         const crmCode = this.extractCrm(optMeta.optId);
         const rateId = stay?.RateId || '';
-        const selKey = `${optMeta.optId}#${rateId}`;   // << stable selection key
+        const selKey = `${optMeta.optId}#${rateId}`;
         const selected = !!this.selectedKeys[selKey];
 
         return {
@@ -939,7 +948,7 @@ export default class AvailabilitySearch extends LightningElement {
             selectButtonClass: `select-button${selected ? ' selected' : ''}`,
             locCode: this.extractLoc(optMeta.optId)
         };
-    }
+    };
 
     async resolveLocationCodesForGroup(crm) {
         if (this.lastSelectedLocationCodes && this.lastSelectedLocationCodes.length) {
@@ -966,7 +975,7 @@ export default class AvailabilitySearch extends LightningElement {
         }
 
         return [];
-    }
+    };
 
     handleChangeLocation(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
@@ -974,7 +983,7 @@ export default class AvailabilitySearch extends LightningElement {
         this.selectedLocations = selectedLocs;
         console.log('Selected locations:', selectedLocs);
         this.getHotels();
-    }
+    };
 
     async getHotels() {
         this.selectableHotels = await getHotelsFromLocations({ locationIds: this.selectedLocations.map(l => l.value) });
@@ -993,7 +1002,7 @@ export default class AvailabilitySearch extends LightningElement {
                 supplierComponent.setSelectedList(stillValid.map(s => s.label).join(';'));
             }
         }
-    }
+    };
 
     handleChangeSupplier(event) {
         const selectedSupplierOptions = event.detail.options.filter(opt => opt.checked);
@@ -1001,25 +1010,25 @@ export default class AvailabilitySearch extends LightningElement {
         const selectedSup = selectedSupplierOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedSuppliers = selectedSup;
         console.log('Selected suppliers:', selectedSup);
-    }
+    };
 
     handleChangeStarRating(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedStarRatings = selectedOptions.map(opt => opt.value);
         console.log('Selected star ratings:', this.selectedStarRatings);
-    }
+    };
 
     handleChangeSupplierStatus(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedSupplierStatuses = selectedOptions.map(opt => opt.value);
         console.log('Selected supplier statuses:', this.selectedSupplierStatuses);
-    }
+    };
 
     handleChangeAttractions(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedAttractions = selectedOptions.map(opt => opt.value);
         console.log('Selected attractions:', this.selectedAttractions);
-    }
+    };
 
     handleRowCheckboxChange = (e) => {
         const rowKey = e.target.dataset.rowKey;
@@ -1063,12 +1072,12 @@ export default class AvailabilitySearch extends LightningElement {
     extractCrm(optId) {
         if (!optId || optId.length < 11) return '';
         return optId.substring(5, 11);
-    }
+    };
 
     extractLoc(optId) {
         if (!optId || optId.length < 3) return '';
         return optId.substring(0, 3);
-    }
+    };
 
 
     groupBySupplier(rows) {
@@ -1118,7 +1127,7 @@ export default class AvailabilitySearch extends LightningElement {
             });
 
         return groups;
-    }
+    };
 
 
     setGroupLoading(crmCode, value) {
@@ -1127,7 +1136,7 @@ export default class AvailabilitySearch extends LightningElement {
         );
 
         this.buildDateSections();
-    }
+    };
 
     composeChildPolicy(gen) {
         const aFrom = gen?.Adult_From, aTo = gen?.Adult_To;
@@ -1138,14 +1147,14 @@ export default class AvailabilitySearch extends LightningElement {
         if (cFrom || cTo) parts.push(`Child: ${cFrom || '—'}-${cTo || '—'}`);
         if (iFrom || iTo) parts.push(`Infant: ${iFrom || '—'}-${iTo || '—'}`);
         return parts.join(', ') || '—';
-    }
+    };
 
     cancelWindow(hours) {
         if (!hours) return 'No';
         const h = Number(hours);
         if (Number.isFinite(h) && h > 0) return 'Yes';
         return 'No';
-    }
+    };
 
     formatMoney(amount) {
         if (amount == null || amount === '') return '';
@@ -1157,7 +1166,7 @@ export default class AvailabilitySearch extends LightningElement {
 
     get showNoHotels() {
         return this.hasSearched && !this.loading && !this.error && (!this.groups || this.groups.length === 0);
-    }
+    };
 
     handleSaveSelected = async () => {
         const selected = (this.rows || []).filter(r => !!this.selectedKeys[r.selKey] && !r.addDisabled);
@@ -1265,43 +1274,43 @@ export default class AvailabilitySearch extends LightningElement {
 
     get headerCheckIn() {
         return this.formatDatePretty(this.filters.startDate);
-    }
+    };
     get headerCheckOut() {
         if (this.filters.endDate) return this.formatDatePretty(this.filters.endDate);
         if (!this.filters.startDate) return '—';
         return this.formatDatePretty(
             this.computeEndDate(this.filters.startDate, this.filters.durationNights)
         );
-    }
+    };
     get headerNights() {
         const n = this.filters.durationNights || '0';
         return `${n} (Nights)`;
-    }
+    };
     get headerRooms() {
         const r = this.filters.quantityRooms || '0';
         return `${r} (Rooms)`;
-    }
+    };
     get headerLocation() {
         return this.filters.location || '—';
-    }
+    };
     get headerSupplierStatus() {
         if (!this.selectedSupplierStatuses || this.selectedSupplierStatuses.length === 0) {
             return 'Any';
         }
         return this.selectedSupplierStatuses.join(', ');
-    }
+    };
 
     get headerStarRating() {
         const r = { '': 'Any', '5 Star': '5 Star', '4 Star': '4 Star', '3 Star': '3 Star' }
         return r[this.filters.starRating ?? ''] || '-';
-    }
+    };
 
     formatDatePretty(isoLike) {
         if (!isoLike) return '—';
         const d = new Date(isoLike);
         if (isNaN(d)) return '—';
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); // e.g., 1 May 2025
-    }
+    };
 
     getEffectiveGroupFilters(crmCode) {
         const base = this.filters;
@@ -1309,7 +1318,7 @@ export default class AvailabilitySearch extends LightningElement {
         const merged = { ...base, ...ov };
         merged.endDate = merged.endDate || this.computeEndDate(merged.startDate, merged.durationNights);
         return merged;
-    }
+    };
 
     handleGroupHeaderChange = (e) => {
         const crm = e.currentTarget.dataset.crm;
@@ -1351,7 +1360,7 @@ export default class AvailabilitySearch extends LightningElement {
             parts.push(`${this.adults} Adult${this.adults > 1 ? 's' : ''}`);
         }
         if (this.children > 0) {
-            parts.push(`${this.children} Children${this.children > 1 ? 'ren' : ''}`);
+            parts.push(`${this.children} Child${this.children > 1 ? 'ren' : ''}`);
         }
         if (this.infants > 0) {
             parts.push(`${this.infants} Infant${this.infants > 1 ? 's' : ''}`);
@@ -1362,7 +1371,7 @@ export default class AvailabilitySearch extends LightningElement {
         }
 
         return `Availability Search for ${parts.join(' and ')}`;
-    }
+    };
 
     getLocCodesForCrm(crm) {
         return [...new Set(
@@ -1371,7 +1380,7 @@ export default class AvailabilitySearch extends LightningElement {
                 .map(r => r.locCode)
                 .filter(Boolean)
         )];
-    }
+    };
 
     handleGroupSearch = async (e) => {
         const crm = e.currentTarget?.dataset?.crm;
@@ -1510,8 +1519,7 @@ export default class AvailabilitySearch extends LightningElement {
         header.classList.remove('is-active');
     };
 
-
     showToast(title, message, variant) {
         this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
-    }
+    };
 }
