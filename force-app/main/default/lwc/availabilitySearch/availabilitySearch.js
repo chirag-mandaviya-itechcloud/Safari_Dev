@@ -29,7 +29,7 @@ export default class AvailabilitySearch extends LightningElement {
         starRating: '',
         supplierStatus: '',
         attractions: '',
-        liveAvailability: 'OK',
+        liveAvailability: '',
         supplierName: ''
     };
 
@@ -415,6 +415,7 @@ export default class AvailabilitySearch extends LightningElement {
     };
     get liveAvailOptions() {
         return [
+            { label: 'Any', value: '' },
             { label: 'Available', value: 'OK' },
             { label: 'On Request', value: 'RQ' },
         ];
@@ -1125,7 +1126,6 @@ export default class AvailabilitySearch extends LightningElement {
                     loading: prevLoading.get(g.crmCode) || false,
                 };
             });
-
         return groups;
     };
 
