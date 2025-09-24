@@ -114,4 +114,24 @@ public with sharing class AvailabilitySearchController {
 
         return tw;
     }
+
+    @AuraEnabled(cacheable=true)
+    public static Map<String, String> getFerretDestinationFromCrmCode() {
+        Map<String, String> accToFerretDestinations = new Map<String, String>();
+        for (Account acc : [SELECT Id, Ferret_Destination__c, CRM_Code__c FROM Account WHERE CRM_Code__c != null AND RecordType.Name  = 'Supplier']) {
+            accToFerretDestinations.put(acc.CRM_Code__c, acc.Ferret_Destination__c);
+        }
+        return accToFerretDestinations;
+    }
+    
+    @AuraEnabled(cacheable=true)
+    public static List<String> getOptsExternalIds() {
+        List<String> optCodes = new List<String>();
+        
+        for (Opt__c op : [SELECT Id, ExternalId__c FROM Opt__c WHERE Service__c = 'AC']) {
+            optCodes.add(op.ExternalId__c);
+        }
+        
+        return optCodes;
+    }
 }

@@ -238,7 +238,16 @@
                                         </lightning-input>
                                     </div>
 
-                                    <div class="supplier-cell hotelname-cell">{grp.firstLocality}</div>
+                                    <div class="supplier-cell hotelname-cell" title={grp.ferretDestinationLocation}>
+                                        <span class="location-hover" onmouseover={activateLocationTooltip}
+                                            onmouseout={deactivateLocationTooltip}
+                                            data-crm={grp.crmCode}>{grp.firstLocality}</span>
+                                        <template if:true={grp.showLocationTooltip}>
+                                            <div class="custom-tooltip">
+                                                {grp.ferretDestinationLocation}
+                                            </div>
+                                        </template>
+                                    </div>
 
                                     <div class="supplier-cell">
                                         <span class="header-suffix">Star Rating</span>

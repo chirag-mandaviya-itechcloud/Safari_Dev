@@ -279,6 +279,20 @@ export default class AvailabilitySearch extends LightningElement {
         return new Set((this.optExternalIds || []).map(x => String(x).trim().toUpperCase()));
     };
 
+    activateLocationTooltip = (event) => {
+        const crmCode = event.target.dataset.crm;
+        this.groups = (this.groups || []).map(g =>
+            g.crmCode === crmCode ? { ...g, showLocationTooltip: true } : { ...g, showLocationTooltip: false }
+        );
+    };
+
+    deactivateLocationTooltip = (event) => {
+        const crmCode = event.target.dataset.crm;
+        this.groups = (this.groups || []).map(g =>
+            g.crmCode === crmCode ? { ...g, showLocationTooltip: false } : g
+        );
+    };
+
     isOptAllowed(optId) {
         const id = (optId ?? '').toString().trim().toUpperCase();
         const list = this.optIdAllowlist;
