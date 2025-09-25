@@ -702,8 +702,7 @@ export default class AvailabilitySearch extends LightningElement {
             RoomConfig: {
                 Adults: parseInt(r.adults) || 0,
                 Children: parseInt(r.children) || 0,
-                Infants: parseInt(r.infants) || 0,
-                RoomType: 'TW'
+                Infants: parseInt(r.infants) || 0
             }
         }));
     };
