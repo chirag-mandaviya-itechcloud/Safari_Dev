@@ -134,4 +134,84 @@ public with sharing class AvailabilitySearchController {
         
         return optCodes;
     }
+    
+    @AuraEnabled(cacheable=true)
+    public static Map<String,ExchangeRates__c> getAllCurrencyMapByBaseCurrency()
+    {
+        List <ExchangeRates__c> rates = [SELECT        
+                                         AED__c,
+                                         ANG__c,
+                                         ARS__c,
+                                         AUD__c,
+                                         BaseCurrency__c,
+                                         BRL__c,
+                                         CAD__c,
+                                         CHF__c,
+                                         CLP__c,
+                                         CNY__c,
+                                         DKK__c,
+                                         EUR__c,
+                                         ExchangeRateDate__c,
+                                         GBP__c,
+                                         HKD__c,
+                                         Id,
+                                         ILS__c,
+                                         MYR__c,
+                                         Name,
+                                         NZD__c,
+                                         PEN__c,
+                                         RUB__c,
+                                         SEK__c,
+                                         SGD__c,
+                                         USD__c,
+                                         ZAR__c 
+                                         FROM
+                                         ExchangeRates__c
+                                         WHERE 
+                                         BaseCurrency__c IN ('USD','EUR','ZAR') 
+                                         ORDER by CreatedDate DESC limit 3];
+        
+        Map<String,ExchangeRates__c> output = new Map<String,ExchangeRates__c>();
+        for(ExchangeRates__c rate : rates){
+            if(!output.containsKey(rate.BaseCurrency__c)){
+                output.put(rate.BaseCurrency__c,rate);
+            }
+        }
+        
+        return output;
+        
+        
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static Quote getQuoteDetails(Id quoteId) {
+        return [SELECT Opportunity.Client_Display_Currency__c, Opportunity.Country_of_Residence__c FROM Quote WHERE Id = :quoteId LIMIT 1];
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static Map<String, Decimal> getCountryMarkups() {
+        Map<String, Decimal> markups = new Map<String, Decimal>();
+        for (CountryOriginMarkup__mdt m : [SELECT MasterLabel, Value__c FROM CountryOriginMarkup__mdt]) {
+            markups.put(m.MasterLabel, Decimal.valueOf(String.valueOf(m.Value__c)));
+        }
+        return markups;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static Map<String, Decimal> getServiceTypeMarkups() {
+        Map<String, Decimal> markups = new Map<String, Decimal>();
+        for (ServiceTypeMarkup__mdt m : [SELECT MasterLabel, Value__c FROM ServiceTypeMarkup__mdt]) {
+            markups.put(m.MasterLabel, Decimal.valueOf(String.valueOf(m.Value__c)));
+        }
+        return markups;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static Map<String, Decimal> getSupplierMarkups() {
+        Map<String, Decimal> markups = new Map<String, Decimal>();
+        for (SupplierMarkup__mdt m : [SELECT Code__c, Value__c FROM SupplierMarkup__mdt]) {
+            markups.put(m.Code__c, Decimal.valueOf(String.valueOf(m.Value__c)));
+        }
+        return markups;
+    }
 }
