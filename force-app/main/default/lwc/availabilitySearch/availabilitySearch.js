@@ -15,8 +15,11 @@ import getPassengerTypeCounts from '@salesforce/apex/HotelController.getPassenge
 import ACCOUNT_OBJECT from '@salesforce/schema/Account';
 import ATTRACTIONS_FIELD from '@salesforce/schema/Account.Supplier_Activities_Attractions__c';
 import getTravelDatesFromQuote from '@salesforce/apex/AvailabilitySearchController.getTravelDatesFromQuote';
-
-const CURRENCY = 'ZAR';
+import getAllCurrencyMapByBaseCurrency from '@salesforce/apex/AvailabilitySearchController.getAllCurrencyMapByBaseCurrency';
+import getQuoteDetails from '@salesforce/apex/AvailabilitySearchController.getQuoteDetails';
+import getCountryMarkups from '@salesforce/apex/AvailabilitySearchController.getCountryMarkups';
+import getServiceTypeMarkups from '@salesforce/apex/AvailabilitySearchController.getServiceTypeMarkups';
+import getSupplierMarkups from '@salesforce/apex/AvailabilitySearchController.getSupplierMarkups';
 
 export default class AvailabilitySearch extends LightningElement {
     @track filters = {
@@ -59,11 +62,20 @@ export default class AvailabilitySearch extends LightningElement {
         { label: 'Blacklisted', value: 'Blacklisted' }
     ];
 
+    serviceTypeMap = {
+        'AC': 'Accommodation',
+        'TF': 'Transfer',
+        'DT': 'Day Tours',
+        'OV': 'Overland Tours',
+        'PK': 'Short-break Packages'
+    }
+
     @api recordId;
 
     @track rows = [];
     @track groups = [];
     @track locationOptions = [];
+    quoteData = {};
 
     @track loading = false;
     error;
@@ -82,6 +94,10 @@ export default class AvailabilitySearch extends LightningElement {
     @track selectedKeys = {};
     ferretDestinations = {};
     @track dateSections = [];
+    currencyMap = {};
+    countryMarkups = {};
+    serviceTypeMarkups = {};
+    supplierMarkups = {};
 
     @track roomConfigs = [];
     roomTypeOptions = [
@@ -153,6 +169,56 @@ export default class AvailabilitySearch extends LightningElement {
             this.optExternalIds = data;
         } else if (error) {
             console.error('Error retrieving External IDs: ', error);
+        }
+    }
+
+    @wire(getAllCurrencyMapByBaseCurrency, {})
+    getCurrencyMap({ data, error }) {
+        if (data) {
+            console.log('Retrieved Currency Map: ', data);
+            this.currencyMap = data;
+        } else if (error) {
+            console.error('Error retrieving Currency Map: ', error);
+        }
+    }
+
+    @wire(getQuoteDetails, { quoteId: '$recordId' })
+    quoteDetails({ data, error }) {
+        if (data) {
+            this.quoteData = data;
+            console.log('Retrieved Quote Details: ', data);
+        } else if (error) {
+            console.error('Error retrieving Quote Details: ', error);
+        }
+    }
+
+    @wire(getCountryMarkups, {})
+    countryMarkups({ data, error }) {
+        if (data) {
+            this.countryMarkups = data;
+            console.log('Retrieved Country Markups: ', data);
+        } else if (error) {
+            console.error('Error retrieving Country Markups: ', error);
+        }
+    }
+
+    @wire(getServiceTypeMarkups, {})
+    serviceTypeMarkups({ data, error }) {
+        if (data) {
+            this.serviceTypeMarkups = data;
+            console.log('Retrieved Service Type Markups: ', data);
+        } else if (error) {
+            console.error('Error retrieving Service Type Markups: ', error);
+        }
+    }
+
+    @wire(getSupplierMarkups, {})
+    supplierMarkups({ data, error }) {
+        if (data) {
+            this.supplierMarkups = data;
+            console.log('Retrieved Supplier Markups: ', data);
+        } else if (error) {
+            console.error('Error retrieving Supplier Markups: ', error);
         }
     }
 
@@ -849,7 +915,7 @@ export default class AvailabilitySearch extends LightningElement {
                         Info: 'GSI',
                         DateFrom: this.filters.startDate,
                         SCUqty: this.filters.durationNights,
-                        ButtonName: 'Accommodation',
+                        ButtonName: this.serviceTypeMap[this.filters.serviceType] || 'Accommodation',
                         RoomConfigs: roomConfigs,
                         MaximumOptions: 30
                     });
@@ -894,6 +960,8 @@ export default class AvailabilitySearch extends LightningElement {
             const childPolicy = this.composeChildPolicy(gen);
             const supplierStatus = gen?.DBAnalysisCode1 || '';
             const starRating = gen?.ClassDescription || '';
+            const country = gen?.Address5 || '';
+            const buttonName = gen?.ButtonName || '';
 
             const optMeta = {
                 optId: opt?.Opt || '',
@@ -904,7 +972,7 @@ export default class AvailabilitySearch extends LightningElement {
             const stays = Array.isArray(rawStay) ? rawStay : (rawStay ? [rawStay] : []);
 
             stays.forEach((stay, idx) => {
-                const row = this.mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta, supplierStatus, starRating);
+                const row = this.mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta, supplierStatus, starRating, country, buttonName);
                 out.push({ ...row, id: `${optMeta.optionNumber || optMeta.optId}-${idx}` });
             });
         });
@@ -912,13 +980,35 @@ export default class AvailabilitySearch extends LightningElement {
         return out;
     };
 
-    mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }, supplierStatus, starRating) {
+    mapStayToRow(stay, supplier, desc, locality, childPolicy, optMeta = { optId: '', optionNumber: '' }, supplierStatus, starRating, country, buttonName) {
         const availabilityCode = (stay?.Availability || '').toUpperCase();
         const statusMap = { OK: 'Available', RQ: 'On Request', NO: 'Unavailable', NA: 'Unavailable' };
         const status = statusMap[availabilityCode] || (availabilityCode || '—');
+        const crmCode = this.extractCrm(optMeta.optId);
 
-        const nett = this.formatMoney(stay?.AgentPrice ?? stay?.TotalPrice);
-        const sell = this.formatMoney(stay?.TotalPrice ?? stay?.AgentPrice);
+        const currency = stay?.Currency || 'ZAR';
+        const nettPrice = stay?.AgentPrice ?? stay?.TotalPrice;
+        console.log('Nett Price:', nettPrice);
+        console.log('Country:', country);
+        console.log('Button Name:', buttonName);
+        console.log('CRM Code:', crmCode);
+
+        console.log('Country Markup:', this.countryMarkups[country] || 0);
+        console.log('Service Type Markup:', this.serviceTypeMarkups[buttonName] || 0);
+        console.log('Supplier Markup:', this.supplierMarkups[crmCode] || 0);
+
+        const markup = ((this.countryMarkups[country] || 0) / 100 + (this.serviceTypeMarkups[buttonName] || 0) / 100 + ((this.supplierMarkups[crmCode] || 0) / 100)) * 100;
+
+        console.log('Total Markup %:', markup);
+        const gp = (1 - (1 / (1 + markup / 100))) * 100;
+        console.log('Calculated GP %:', gp);
+
+        const sellPrice = Math.round(nettPrice / (1 - gp / 100));
+
+        console.log('Calculated Sell Price:', sellPrice);
+
+        const nett = this.formatMoney(nettPrice, currency);
+        const sell = this.formatMoney(sellPrice, currency);
 
         const rateText = this.decodeHtml(
             (typeof stay?.RateText === 'string' && stay.RateText) ||
@@ -926,9 +1016,9 @@ export default class AvailabilitySearch extends LightningElement {
             ''
         );
 
+
         const externalDescr = this.decodeHtml(stay?.ExternalRateDetails?.ExtOptionDescr || '');
         const roomType = stay?.RoomList?.RoomType || 'TWIN AVAIL';
-        const crmCode = this.extractCrm(optMeta.optId);
         const rateId = stay?.RateId || '';
         const selKey = `${optMeta.optId}#${rateId}`;
         const selected = !!this.selectedKeys[selKey];
@@ -960,7 +1050,8 @@ export default class AvailabilitySearch extends LightningElement {
             selKey,
             isSelected: selected,
             selectButtonClass: `select-button${selected ? ' selected' : ''}`,
-            locCode: this.extractLoc(optMeta.optId)
+            locCode: this.extractLoc(optMeta.optId),
+            currency
         };
     };
 
@@ -1169,12 +1260,13 @@ export default class AvailabilitySearch extends LightningElement {
         return 'No';
     };
 
-    formatMoney(amount) {
+    formatMoney(amount, currency) {
         if (amount == null || amount === '') return '';
         const n = Number(amount);
         if (!Number.isFinite(n)) return '';
         const val = n / 100;
-        return `${CURRENCY}${val.toLocaleString()}`;
+        const finalConvertedAmount = val * this.currencyMap[currency][`${this.quoteData.Opportunity.Client_Display_Currency__c}__c`];
+        return `${this.quoteData.Opportunity.Client_Display_Currency__c} ${finalConvertedAmount.toLocaleString()}`;
     }
 
     get showNoHotels() {
