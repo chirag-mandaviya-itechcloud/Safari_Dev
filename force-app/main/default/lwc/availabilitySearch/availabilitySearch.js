@@ -28,12 +28,7 @@ export default class AvailabilitySearch extends LightningElement {
         durationNights: '1',
         endDate: '',
         quantityRooms: '1',
-        location: '',
-        starRating: '',
-        supplierStatus: '',
-        attractions: '',
-        liveAvailability: '',
-        supplierName: ''
+        liveAvailability: ''
     };
 
     channelName = '/event/Hotel_Availability_Event__e';
@@ -1226,7 +1221,7 @@ export default class AvailabilitySearch extends LightningElement {
                     uiEndDate: end || '',
                     uiDurationNights: nights,
                     uiQuantityRooms: String(ge.quantityRooms ?? this.filters.quantityRooms ?? '1'),
-                    uiStarRating: ge.starRating ?? this.filters.starRating ?? '',
+                    uiStarRating: ge.starRating ?? '',
                     loading: prevLoading.get(g.crmCode) || false,
                 };
             });
@@ -1395,19 +1390,12 @@ export default class AvailabilitySearch extends LightningElement {
         const r = this.filters.quantityRooms || '0';
         return `${r} (Rooms)`;
     };
-    get headerLocation() {
-        return this.filters.location || '—';
-    };
+
     get headerSupplierStatus() {
         if (!this.selectedSupplierStatuses || this.selectedSupplierStatuses.length === 0) {
             return 'Any';
         }
         return this.selectedSupplierStatuses.join(', ');
-    };
-
-    get headerStarRating() {
-        const r = { '': 'Any', '5 Star': '5 Star', '4 Star': '4 Star', '3 Star': '3 Star' }
-        return r[this.filters.starRating ?? ''] || '-';
     };
 
     formatDatePretty(isoLike) {
