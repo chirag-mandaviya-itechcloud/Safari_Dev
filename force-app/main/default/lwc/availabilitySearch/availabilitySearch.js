@@ -1002,7 +1002,7 @@ export default class AvailabilitySearch extends LightningElement {
 
         console.log('Calculated Sell Price:', sellPrice);
 
-        const nett = this.formatMoney(nettPrice, currency);
+        const nett = this.formatNetMoney(nettPrice, currency);
         const sell = this.formatMoney(sellPrice, currency);
 
         const rateText = this.decodeHtml(
@@ -1264,6 +1264,14 @@ export default class AvailabilitySearch extends LightningElement {
         return `${this.quoteData.Opportunity.Client_Display_Currency__c} ${finalConvertedAmount.toLocaleString()}`;
     }
 
+    formatNetMoney(amount, currency) {
+        if (amount == null || amount === '') return '';
+        const n = Number(amount);
+        if (!Number.isFinite(n)) return '';
+        const val = n / 100;
+        return `${currency} ${val.toLocaleString()}`;
+    }
+
     get showNoHotels() {
         return this.hasSearched && !this.loading && !this.error && (!this.groups || this.groups.length === 0);
     };
@@ -1329,6 +1337,8 @@ export default class AvailabilitySearch extends LightningElement {
                     console.log("Saving QLI with params:", params);
 
                     const result = await SaveQuoteLineItem(params);
+
+                    console.log('SaveQuoteLineItem result:', result);
 
                     if (Array.isArray(result) && result.length === 0) {
                         ok += 1;
