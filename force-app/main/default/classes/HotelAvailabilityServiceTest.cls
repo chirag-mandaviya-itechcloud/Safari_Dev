@@ -12,21 +12,21 @@ public class HotelAvailabilityServiceTest {
 
     @TestSetup
     static void setupData() {
-        Account acc1 = new Account(
+        Account account1 = new Account(
             Name = 'Test Supplier',
             RecordTypeId = Schema.SObjectType.Account.getRecordTypeInfosByName().get('Supplier').getRecordTypeId(),
             CRM_Code__c = 'CRM123',
             TP_Location__c = 'TP1',
             TP_Location_Code__c = 'TPCODE1'
         );
-        insert acc1;
-        Quote q = new Quote(
+        insert account1;
+        Quote quote = new Quote(
             Name = 'Test Quote',
             TravelStartDate__c = Date.today(),
             TravelEndDate__c = Date.today().addDays(5),
             Quotation_Name__c = 'Destination Name'
         );
-        insert q;                                                                   
+        insert quote;                                                                   
     }
 
     @isTest

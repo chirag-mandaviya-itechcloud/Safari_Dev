@@ -2,14 +2,14 @@
 public class HotelControllerTest {
     @testSetup
     static void setupData() {
-        Account acc1 = new Account(
+        Account account1 = new Account(
             Name = 'Test Supplier',
             RecordTypeId = Schema.SObjectType.Account.getRecordTypeInfosByName().get('Supplier').getRecordTypeId(),
             CRM_Code__c = 'CRM123',
             TP_Location__c = 'TP1',
             TP_Location_Code__c = 'TPCODE1'
         );
-        insert acc1;
+        insert account1;
 
         CRM__c crm = new CRM__c(
             CODE__c = 'CRM123',

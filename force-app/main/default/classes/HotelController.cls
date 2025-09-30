@@ -1,5 +1,4 @@
 public class HotelController {
-
     @AuraEnabled(cacheable=true)
     public static List<Opt__c> getOptsByCrmCode(String crmCode) {
         return [SELECT Id, Name, Description__c, ExternalId__c, Comment__c, LOC_Name__c, CRM_Lookup__c, SRV_Name__c FROM Opt__c WHERE CRM_Code__c = :crmCode];
@@ -71,8 +70,4 @@ public class HotelController {
         @InvocableVariable public String address;
         @InvocableVariable public String crmCode;
     }
-
-
-
-
 }

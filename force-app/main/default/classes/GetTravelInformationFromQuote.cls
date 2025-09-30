@@ -1,5 +1,4 @@
 public class GetTravelInformationFromQuote {
-
     public class TravelInformationResponse {
         @InvocableVariable
         public Date startDate;
@@ -94,7 +93,6 @@ public class GetTravelInformationFromQuote {
             
             responses.add(resp);
         }
-        
         return responses;
     }
 }

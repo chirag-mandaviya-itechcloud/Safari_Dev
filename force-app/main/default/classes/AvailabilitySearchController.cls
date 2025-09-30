@@ -20,22 +20,17 @@ public with sharing class AvailabilitySearchController {
     }
 
     @AuraEnabled
-    public static String getOptions(String reqPayload) {
-        // Wrap inside "records" array
-        // AvailabilityWrapper wrapper = new AvailabilityWrapper();
-        // wrapper.records = new List<AvailabilityRequest>{ filters };
-
-        // system.debug('filters-----' + filters);
-
-        // Convert to JSON
-        System.debug('reqPayload==>'+ reqPayload);
+    public static String getOptions(String reqPayload) { 
+        Tourplan_Synatic_Configuration__mdt config = [SELECT Id, DeveloperName, Url_Endpoint__c, Api_Key__c FROM Tourplan_Synatic_Configuration__mdt WHERE DeveloperName = 'Synatic_Tourplan_API' LIMIT 1];
+        String endpoint = config.Url_Endpoint__c;
+        String apiKey = config.Api_Key__c;
         String payload = JSON.serialize(reqPayload);
-        System.debug('Payload => ' + payload);
 
         HttpRequest req = new HttpRequest();
-        req.setEndpoint('https://rest.synatic.com/roamdev/tourplanapi/get_opts'); 
+        req.setEndpoint(endpoint); 
         req.setMethod('POST');
         req.setHeader('Content-Type', 'application/json');
+        req.setHeader('X-API-Key', apiKey);
         req.setBody(reqPayload);
         req.setTimeout(120000);
 
@@ -53,7 +48,6 @@ public with sharing class AvailabilitySearchController {
     public static List<Account> getSupplier(String supplierName) {
         String pattern = '%' + supplierName + '%';
         List<Account> suppliers = [SELECT Id, Name, CRM_Code__c FROM Account WHERE RecordType.Name = 'Supplier' and Name LIKE :pattern LIMIT 1];
-
         return suppliers;
     }
 
@@ -213,5 +207,15 @@ public with sharing class AvailabilitySearchController {
             markups.put(m.Code__c, Decimal.valueOf(String.valueOf(m.Value__c)));
         }
         return markups;
+    }
+
+    @AuraEnabled
+    public static Map<String, String> getSupplierNamesByCrmCodes(List<String> crmCodes) {
+        Map<String, String> out = new Map<String, String>();
+        if (crmCodes == null || crmCodes.isEmpty()) return out;
+        for (Account a : [SELECT Name, CRM_Code__c FROM Account WHERE CRM_Code__c IN :crmCodes]) {
+            out.put(a.CRM_Code__c, a.Name);
+        }
+        return out;
     }
 }

@@ -2,24 +2,24 @@
 public class GetLocationTest {
     @TestSetup
     static void setupData() {
-        Location__c ferretLoc = new Location__c(
+        Location__c ferretLocation = new Location__c(
         	Name = 'FerretDestination',
             Destination_Text__c = 'Ferret Destination',
             LOC_Name__c = 'FerretLocName',
             Tour_Plan_Location_Name__c = 'TPLocFerret',
             Is_Parent__c = true
         );
-        insert ferretLoc;
+        insert ferretLocation;
         
-        Location__c childLoc = new Location__c(
+        Location__c childLocation = new Location__c(
             Name = 'ChildLoc',
             Destination_Text__c = 'Child Destination',
             LOC_Name__c = 'ChildLocName',
             Tour_Plan_Location_Name__c = 'TPLocChild',
             Is_Parent__c = false,
-            Location__c = ferretLoc.Id
+            Location__c = ferretLocation.Id
         );
-        insert childLoc;
+        insert childLocation;
     }
 
     @isTest

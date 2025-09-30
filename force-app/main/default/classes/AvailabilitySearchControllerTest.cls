@@ -31,65 +31,65 @@ public class AvailabilitySearchControllerTest {
         System.runAs(user) {
             user.ByPassValidation__c = true;
             update user;
-            Location__c ferretLoc = new Location__c(
+            Location__c ferretLocation = new Location__c(
                 Name = 'FerretDestination',
                 Destination_Text__c = 'Ferret Destination',
                 LOC_Name__c = 'FerretLocName',
                 Tour_Plan_Location_Name__c = 'TPLocFerret',
                 Is_Parent__c = true
             );
-            insert ferretLoc;
+            insert ferretLocation;
             
-            Location__c childLoc = new Location__c(
+            Location__c childLocation = new Location__c(
                 Name = 'ChildLoc',
                 Destination_Text__c = 'Child Destination',
                 LOC_Name__c = 'ChildLocName',
                 Tour_Plan_Location_Name__c = 'TPLocChild',
                 Is_Parent__c = false,
-                Location__c = ferretLoc.Id
+                Location__c = ferretLocation.Id
             );
-            insert childLoc;
+            insert childLocation;
 
-            Account acc1 = new Account(
+            Account account1 = new Account(
                 Name = 'Test Supplier',
                 RecordTypeId = Schema.SObjectType.Account.getRecordTypeInfosByName().get('Supplier').getRecordTypeId(),
                 CRM_Code__c = 'CRM123',
                 TP_Location__c = 'TP1',
                 TP_Location_Code__c = 'TPCODE1',
                 Country_of_Residence__c = 'South Africa',
-                Location__c = childLoc.Id
+                Location__c = childLocation.Id
             );
-            insert acc1;
+            insert account1;
 
-            Account acc2 = new Account(
+            Account account2 = new Account(
                 Name = 'Hotel A',
                 RecordTypeId = Schema.SObjectType.Account.getRecordTypeInfosByName().get('Supplier').getRecordTypeId(),
                 CRM_Code__c = 'CRM456',
                 TP_Location__c = 'TP2',
                 TP_Location_Code__c = 'TPCODE1',
                 Country_of_Residence__c = 'South Africa',
-                Location__c = childLoc.Id
+                Location__c = childLocation.Id
             );
-            insert acc2;
+            insert account2;
 
-            Opportunity opp = new Opportunity(
+            Opportunity opportunity = new Opportunity(
                 Name = 'Opp1',
                 StageName = 'Prospecting',
                 CloseDate = Date.today(),
                 Client_Display_Currency__c = 'USD',
-                AccountId = acc1.Id
+                AccountId = account1.Id
 
             );
-            insert opp;
+            insert opportunity;
             
-            Quote q = new Quote(
+            Quote quote = new Quote(
                 Name = 'Test Quote',
                 TravelStartDate__c = Date.today(),
                 TravelEndDate__c = Date.today().addDays(5),
                 Quotation_Name__c = 'Destination Name',
-                OpportunityId = opp.Id
+                OpportunityId = opportunity.Id
             );
-            insert q;
+            insert quote;
 
             LCL__c lcl = new LCL__c(
                 DESCR__c = 'Test Place'
@@ -218,5 +218,12 @@ public class AvailabilitySearchControllerTest {
     static void testGetSupplierMarkups() {
         Map<String, Decimal> countryMap = AvailabilitySearchController.getSupplierMarkups();
         System.assert(countryMap.containsKey('AMA004'));
+    }
+
+    @isTest
+    static void testGetSupplierNamesByCrmCodes() {
+        String crmCode = [SELECT Id, CRM_Code__c FROM Account LIMIT 1].CRM_Code__c;
+        Map<String, String> hotelMap = AvailabilitySearchController.getSupplierNamesByCrmCodes(new List<String> {crmCode});
+        System.assert(hotelMap.containsKey(crmCode));
     }
 }

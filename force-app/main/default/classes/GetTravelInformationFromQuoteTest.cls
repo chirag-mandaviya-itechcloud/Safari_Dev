@@ -26,7 +26,6 @@ public class GetTravelInformationFromQuoteTest {
             );
             insert account;
 
-            // Opportunity
             Opportunity opportunity = new Opportunity(
                 Name = 'Test Opp',
                 StageName = 'Prospecting',
@@ -40,7 +39,6 @@ public class GetTravelInformationFromQuoteTest {
             );
             insert opportunity;
 
-            // Quote
             Quote quote = new Quote(
                 Name = 'Test Quote',
                 OpportunityId = opportunity.Id,
@@ -50,7 +48,6 @@ public class GetTravelInformationFromQuoteTest {
             );
             insert quote;
 
-            // Passengers
             Passenger__c adultPassenger = new Passenger__c(
                 FirstName__c = 'Adult',
                 Last_Name__c = 'Passenger',
@@ -67,7 +64,6 @@ public class GetTravelInformationFromQuoteTest {
 
             insert new List<Passenger__c>{ adultPassenger, childPassenger };
 
-            // Passenger mappings
             PassengerQuotationMapping__c adultMapping = new PassengerQuotationMapping__c(
                 Passenger__c = adultPassenger.Id,
                 Quote__c = quote.Id

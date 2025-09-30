@@ -2,23 +2,23 @@
 public class GetSupplierDetailsBasedOnLocationTest {
     @TestSetup
     static void setupData() {
-        Location__c loc = new Location__c(
+        Location__c location = new Location__c(
             Name = 'Test Location',
             Destination_Text__c = 'Safari Destination',
             LOC_Name__c = 'TestLoc',
             Is_Parent__c = true
         );
-        insert loc;
+        insert location;
 
-        Account acc1 = new Account(
+        Account account1 = new Account(
             Name = 'Test Supplier',
             RecordTypeId = Schema.SObjectType.Account.getRecordTypeInfosByName().get('Supplier').getRecordTypeId(),
             CRM_Code__c = 'CRM123',
             TP_Location__c = 'TP1',
             TP_Location_Code__c = 'TPCODE1',
-            Location__c = loc.Id
+            Location__c = location.Id
         );
-        insert acc1;
+        insert account1;
     }
 
     @isTest

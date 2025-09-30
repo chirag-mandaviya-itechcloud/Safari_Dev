@@ -22,8 +22,7 @@ public class GetLocation {
         List<LocationResponse> responses = new List<LocationResponse>();
         
         List<Location__c> locs = [SELECT Id, Destination_Text__c, LOC_Name__c, Location__c FROM Location__c WHERE Is_Parent__c = True];
-        
-        // For each request, create a response
+
         for (LocationRequest req : requestList) {
             LocationResponse response = new LocationResponse();
             response.locations = new List<LocationResponseData>();
@@ -36,7 +35,6 @@ public class GetLocation {
                     response.locations.add(data);
                 }
             }
-
             responses.add(response);
         }
         return responses;
