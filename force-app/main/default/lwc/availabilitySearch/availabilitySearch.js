@@ -20,6 +20,7 @@ import getQuoteDetails from '@salesforce/apex/AvailabilitySearchController.getQu
 import getCountryMarkups from '@salesforce/apex/AvailabilitySearchController.getCountryMarkups';
 import getServiceTypeMarkups from '@salesforce/apex/AvailabilitySearchController.getServiceTypeMarkups';
 import getSupplierMarkups from '@salesforce/apex/AvailabilitySearchController.getSupplierMarkups';
+import getSupplierNamesByCrmCodes from '@salesforce/apex/AvailabilitySearchController.getSupplierNamesByCrmCodes';
 
 export default class AvailabilitySearch extends LightningElement {
     @track filters = {
@@ -93,6 +94,8 @@ export default class AvailabilitySearch extends LightningElement {
     countryMarkups = {};
     serviceTypeMarkups = {};
     supplierMarkups = {};
+    requestedCrmCodes = new Set();
+    @track crmNameMap = {};
 
     @track roomConfigs = [];
     roomTypeOptions = [
@@ -361,7 +364,7 @@ export default class AvailabilitySearch extends LightningElement {
         return id && list.has(id);
     };
 
-    handlePeMessage = (message) => {
+    handlePeMessage = async (message) => {
         console.log('PE message received: ', message);
         try {
             const payload = message?.data?.payload || {};
@@ -383,9 +386,37 @@ export default class AvailabilitySearch extends LightningElement {
                 raw = payload;
             }
 
+            // From Request_JSON__c, collect the CRM codes that were asked for
+            const requestedSet = this.parseRequestedCrmsFromRequestJson(payload.Request_JSON__c);
+            this.requestedCrmCodes = requestedSet; // overwrite with PE's requested set
+            console.log('PE requested CRMs:', [...requestedSet]);
+
+            if (requestedSet && requestedSet.size) {
+                try {
+                    const crmList = [...requestedSet];
+                    const nameMap = await getSupplierNamesByCrmCodes({ crmCodes: crmList });
+                    this.crmNameMap = { ...this.crmNameMap, ...(nameMap || {}) };
+                } catch (nameErr) {
+                    console.warn('Could not resolve supplier names for CRMs:', [...requestedSet], nameErr);
+                }
+            }
+
+
+            // If both dates are present, compute nights so group headers are correct
+            const peStart = payload.Start_Date__c || '';
+            const peEnd = payload.End_Date__c || '';
+            const peNights = (peStart && peEnd) ? this.computeNights(peStart, peEnd) : '';
+
+            // this.appendResultsFromRaw(raw, "Agent", {
+            //     peStart: payload.Start_Date__c || '',
+            //     peEnd: payload.End_Date__c || ''
+            // });
+
             this.appendResultsFromRaw(raw, "Agent", {
-                peStart: payload.Start_Date__c || '',
-                peEnd: payload.End_Date__c || ''
+                requestedCrms: [...requestedSet],
+                peStart,
+                peEnd,
+                peNights
             });
         } catch (e) {
             console.error('handlePeMessage error', e);
@@ -467,8 +498,14 @@ export default class AvailabilitySearch extends LightningElement {
         this.rows = mergedRows;
         this.groups = this.groupBySupplier(mergedRows);
 
-        this.buildDateSections();
+        // Merge any explicitly requested CRMs (from search or PE) that returned no rows
+        if (meta?.requestedCrms && meta.requestedCrms.length) {
+            // Update the tracking set (so both search and PE can accumulate if desired)
+            meta.requestedCrms.forEach(c => { if (c) this.requestedCrmCodes.add(c); });
+        }
+        this.injectEmptyGroupsForRequested(meta);
 
+        this.buildDateSections();
         this.hasSearched = true;
     };
 
@@ -514,6 +551,65 @@ export default class AvailabilitySearch extends LightningElement {
         const nights = Math.max(1, days); // checkout = start + nights + 1
         return String(nights);
     };
+
+    getCrmFromOpt(optId = '') {
+        if (!optId || optId.length < 11) return '';
+        return optId.substring(5, 11);
+    }
+
+    parseRequestedCrmsFromRequestJson(reqJson) {
+        const out = new Set();
+        try {
+            const body = (typeof reqJson === 'string') ? JSON.parse(reqJson) : (reqJson || {});
+            const recs = Array.isArray(body?.records) ? body.records : [];
+            recs.forEach(r => {
+                const crm = this.getCrmFromOpt(r?.Opt || '');
+                if (crm) out.add(crm);
+            });
+        } catch (e) {
+            // ignore parse errors; we just won't add any requested CRMs
+        }
+        return out;
+    }
+
+    injectEmptyGroupsForRequested(meta = {}) {
+        if (!this.requestedCrmCodes || this.requestedCrmCodes.size === 0) return;
+
+        const existing = new Set((this.groups || []).map(g => g.crmCode));
+        const missing = [...this.requestedCrmCodes].filter(c => c && !existing.has(c));
+        if (missing.length === 0) return;
+
+        const defaultStart = meta.peStart || this.filters.startDate || '';
+        const defaultNights = String(meta.peNights || this.filters.durationNights || '1');
+        const defaultEnd = defaultStart ? this.computeEndDate(defaultStart, defaultNights) : '';
+
+        const added = missing.map(crm => {
+            const supplierName = this.crmNameMap[crm] || crm; // now likely filled from Apex for PE
+            const ferret = this.ferretDestinations?.[crm] || '';
+            let firstLocality = '';
+            if (ferret) firstLocality = this.pickParentDestination(ferret) || ferret;
+
+            return {
+                crmCode: crm,
+                supplier: supplierName,
+                items: [],
+                firstLocality,
+                ferretDestinationLocation: ferret,
+                uiStartDate: defaultStart,
+                uiEndDate: defaultEnd,
+                uiDurationNights: defaultNights,
+                uiQuantityRooms: String(this.filters.quantityRooms || '1'),
+                uiStarRating: '',
+                loading: false
+            };
+        });
+
+        this.groups = [...(this.groups || []), ...added]
+            .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
+        this.buildDateSections();
+    }
+
+
 
     parseMidnight(iso) {
         if (!iso) return null;
@@ -896,6 +992,8 @@ export default class AvailabilitySearch extends LightningElement {
                     ? this.selectedSupplierCrmCodes
                     : [null];
 
+            this.requestedCrmCodes = new Set((hotelCrmCodes || []).filter(Boolean));
+
             locationData.forEach(loc => {
                 const locationCode = loc.LOC_Name__c;
                 hotelCrmCodes.forEach(crmCode => {
@@ -924,7 +1022,11 @@ export default class AvailabilitySearch extends LightningElement {
 
             console.log('API raw response:', raw);
 
-            this.appendResultsFromRaw(raw, "Search");
+            // this.appendResultsFromRaw(raw, "Search");
+            this.appendResultsFromRaw(raw, "Search", {
+                requestedCrms: [...this.requestedCrmCodes],
+                peStart: '', peEnd: ''
+            });
         } catch (err) {
             this.error = (err && err.body && err.body.message)
                 ? err.body.message
@@ -980,6 +1082,10 @@ export default class AvailabilitySearch extends LightningElement {
         const statusMap = { OK: 'Available', RQ: 'On Request', NO: 'Unavailable', NA: 'Unavailable' };
         const status = statusMap[availabilityCode] || (availabilityCode || '—');
         const crmCode = this.extractCrm(optMeta.optId);
+
+        if (crmCode && supplier) {
+            this.crmNameMap[crmCode] = supplier;
+        }
 
         const currency = stay?.Currency || 'ZAR';
         const nettPrice = stay?.AgentPrice ?? stay?.TotalPrice;
@@ -1087,6 +1193,9 @@ export default class AvailabilitySearch extends LightningElement {
 
     async getHotels() {
         this.selectableHotels = await getHotelsFromLocations({ locationIds: this.selectedLocations.map(l => l.value) });
+        (this.selectableHotels || []).forEach(opt => {
+            if (opt?.value && opt?.label) this.crmNameMap[opt.value] = opt.label;
+        });
         const supplierComponent = this.template.querySelector('[role="cms-picklist"]');
         if (supplierComponent) {
             supplierComponent.setOptions(this.selectableHotels);
@@ -1110,6 +1219,9 @@ export default class AvailabilitySearch extends LightningElement {
         const selectedSup = selectedSupplierOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedSuppliers = selectedSup;
         console.log('Selected suppliers:', selectedSup);
+        (this.selectedSuppliers || []).forEach(s => {
+            if (s?.value && s?.label) this.crmNameMap[s.value] = s.label;
+        });
     };
 
     handleChangeStarRating(event) {
@@ -1260,8 +1372,10 @@ export default class AvailabilitySearch extends LightningElement {
         const n = Number(amount);
         if (!Number.isFinite(n)) return '';
         const val = n / 100;
-        const finalConvertedAmount = val * this.currencyMap[currency][`${this.quoteData.Opportunity.Client_Display_Currency__c}__c`];
-        return `${this.quoteData.Opportunity.Client_Display_Currency__c} ${finalConvertedAmount.toLocaleString()}`;
+        const targetCurrency = this.quoteData.Opportunity.Client_Display_Currency__c;
+        const rate = this.currencyMap?.[currency]?.[`${targetCurrency}__c`] ?? 1;
+        const finalConvertedAmount = Math.round((val * rate));
+        return `${targetCurrency} ${finalConvertedAmount.toLocaleString()}`;
     }
 
     formatNetMoney(amount, currency) {
