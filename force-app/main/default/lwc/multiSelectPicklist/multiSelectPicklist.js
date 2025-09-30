@@ -116,26 +116,23 @@ export default class MultiSelectPicklist extends LightningElement {
         }
     }
 
-   // Keep your existing imports and properties...
+    get pillGroupClass() {
+        return 'slds-listbox_selection-group ' + (this.isExpanded ? 'slds-listbox_expanded' : '');
+    }
 
-get pillGroupClass() {
-  // collapsed by default unless expanded by user
-  return 'slds-listbox_selection-group ' + (this.isExpanded ? 'slds-listbox_expanded' : '');
-}
+    onRemove(event) {
+        const name =
+            (event.detail && event.detail.name) ||
+            (event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.name);
 
-onRemove(event) {
-  const name =
-    (event.detail && event.detail.name) ||
-    (event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.name);
+        if (!name) return;
 
-  if (!name) return;
-
-  const opt = this.options.find(o => o.label === name);
-  if (opt) {
-    opt.checked = false;
-    this.postSelect();
-  }
-}
+        const opt = this.options.find(o => o.label === name);
+        if (opt) {
+            opt.checked = false;
+            this.postSelect();
+        }
+    }
 
 
 

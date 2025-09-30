@@ -1,5 +1,5 @@
 import { LightningElement, track, api, wire } from 'lwc';
-import { subscribe, unsubscribe, onError, setDebugFlag, isEmpEnabled } from 'lightning/empApi';
+import { subscribe, unsubscribe, onError, setDebugFlag } from 'lightning/empApi';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { getPicklistValues } from 'lightning/uiObjectInfoApi';
 import getOptions from '@salesforce/apex/AvailabilitySearchController.getOptions';
@@ -122,14 +122,12 @@ export default class AvailabilitySearch extends LightningElement {
     accountMetadata({ data, error }) {
         if (data) {
             const recordTypeInfos = data.recordTypeInfos;
-            // loop through recordTypeInfos to find Supplier
             for (let rtId in recordTypeInfos) {
                 if (recordTypeInfos[rtId].name === 'Supplier') {
                     this.supplierRecordTypeId = rtId;
                     break;
                 }
             }
-            console.log('Supplier RecordTypeId:', this.supplierRecordTypeId);
         } else if (error) {
             console.error('Error fetching Account object info: ', error);
         }
@@ -141,9 +139,7 @@ export default class AvailabilitySearch extends LightningElement {
     })
     attractionsPicklistValues({ data, error }) {
         if (data) {
-            // console.log('Attractions Picklist Data:', data);
             this.attractionsOptions = data.values.map(v => ({ label: v.label, value: v.value }));
-            // console.log('Attractions Options:', this.attractionsOptions);
             this.loadAttractions = true;
         } else if (error) {
             console.error('Error fetching attractions picklist values: ', error);
@@ -153,7 +149,6 @@ export default class AvailabilitySearch extends LightningElement {
     @wire(getFerretDestinationFromCrmCode, {})
     crmCodeToFerretDestinations({ data, error }) {
         if (data) {
-            // console.log('Retrieved Ferret Destinations: ', data);
             this.ferretDestinations = data;
         } else if (error) {
             console.error('Error retrieving Ferret Destinations: ', error);
@@ -163,7 +158,6 @@ export default class AvailabilitySearch extends LightningElement {
     @wire(getOptsExternalIds, {})
     getExternalIds({ data, error }) {
         if (data) {
-            // console.log('Retrieved External IDs: ', data);
             this.optExternalIds = data;
         } else if (error) {
             console.error('Error retrieving External IDs: ', error);
@@ -173,7 +167,6 @@ export default class AvailabilitySearch extends LightningElement {
     @wire(getAllCurrencyMapByBaseCurrency, {})
     getCurrencyMap({ data, error }) {
         if (data) {
-            console.log('Retrieved Currency Map: ', data);
             this.currencyMap = data;
         } else if (error) {
             console.error('Error retrieving Currency Map: ', error);
@@ -184,7 +177,6 @@ export default class AvailabilitySearch extends LightningElement {
     quoteDetails({ data, error }) {
         if (data) {
             this.quoteData = data;
-            console.log('Retrieved Quote Details: ', data);
         } else if (error) {
             console.error('Error retrieving Quote Details: ', error);
         }
@@ -194,7 +186,6 @@ export default class AvailabilitySearch extends LightningElement {
     countryMarkups({ data, error }) {
         if (data) {
             this.countryMarkups = data;
-            console.log('Retrieved Country Markups: ', data);
         } else if (error) {
             console.error('Error retrieving Country Markups: ', error);
         }
@@ -204,7 +195,6 @@ export default class AvailabilitySearch extends LightningElement {
     serviceTypeMarkups({ data, error }) {
         if (data) {
             this.serviceTypeMarkups = data;
-            console.log('Retrieved Service Type Markups: ', data);
         } else if (error) {
             console.error('Error retrieving Service Type Markups: ', error);
         }
@@ -214,7 +204,6 @@ export default class AvailabilitySearch extends LightningElement {
     supplierMarkups({ data, error }) {
         if (data) {
             this.supplierMarkups = data;
-            console.log('Retrieved Supplier Markups: ', data);
         } else if (error) {
             console.error('Error retrieving Supplier Markups: ', error);
         }
@@ -270,7 +259,6 @@ export default class AvailabilitySearch extends LightningElement {
             this.locationOptions = (options || [])
                 .map(o => ({ label: o.label, value: o.value }))
                 .sort((a, b) => a.label.localeCompare(b.label));
-            console.log('locationOptions:', this.locationOptions);
             this.loadLoc = true;
         }).catch((e) => {
             console.error(`${e}`);
@@ -282,7 +270,6 @@ export default class AvailabilitySearch extends LightningElement {
     loadPassengerCounts() {
         this.loading = true;
         getPassengerTypeCounts({ quoteId: this.recordId }).then((counts) => {
-            console.log('Passenger counts:', counts);
             this.adults = counts.Adult || 0;
             this.children = counts.Child || 0;
             this.infants = counts.Infant || 0;
@@ -297,7 +284,6 @@ export default class AvailabilitySearch extends LightningElement {
     loadTravelDates() {
         this.loading = true;
         getTravelDatesFromQuote({ quoteId: this.recordId }).then((data) => {
-            console.log('Travel Dates from Quote:', data);
             this.filters.startDate = data.startDate;
             this.filters.durationNights = String(data.durationNights);
             this.filters.endDate = this.computeEndDate(this.filters.startDate, this.filters.durationNights);
@@ -316,13 +302,11 @@ export default class AvailabilitySearch extends LightningElement {
                 console.error('EMP API error: ', JSON.stringify(error));
             });
 
-            // Subscribe for new events only (-1)
             subscribe(this.channelName, -1, this.handlePeMessage).then((resp) => {
                 this.subscription = resp;
-                console.log('Subscribed to PE channel', JSON.stringify(resp));
             });
         } catch (e) {
-            // console.error('PE subscribe failed', e);
+            console.error('PE subscribe failed', e);
         }
     };
 
@@ -330,12 +314,11 @@ export default class AvailabilitySearch extends LightningElement {
         try {
             if (this.subscription) {
                 unsubscribe(this.subscription, () => {
-                    console.log('Unsubscribed from PE channel');
                 });
                 this.subscription = null;
             }
         } catch (e) {
-            // console.error('PE unsubscribe failed', e);
+            console.error('PE unsubscribe failed', e);
         }
     };
 
@@ -360,21 +343,12 @@ export default class AvailabilitySearch extends LightningElement {
     isOptAllowed(optId) {
         const id = (optId ?? '').toString().trim().toUpperCase();
         const list = this.optIdAllowlist;
-        // if list is empty, nothing is allowed
         return id && list.has(id);
     };
 
     handlePeMessage = async (message) => {
-        console.log('PE message received: ', message);
         try {
             const payload = message?.data?.payload || {};
-
-            console.log('PE Request:', payload.Request_JSON__c);
-            console.log('PE Hotel JSON:', payload.Hotel_JSON__c);
-            console.log('PE Quote Id:', payload.Quote_Id__c);
-            console.log('PE Start Date :', payload.Start_Date__c);
-            console.log('PE End Date :', payload.End_Date__c);
-
             const quoteIdFromPe = payload.Quote_Id__c;
 
             if (!quoteIdFromPe || quoteIdFromPe !== this.recordId) return;
@@ -386,10 +360,8 @@ export default class AvailabilitySearch extends LightningElement {
                 raw = payload;
             }
 
-            // From Request_JSON__c, collect the CRM codes that were asked for
             const requestedSet = this.parseRequestedCrmsFromRequestJson(payload.Request_JSON__c);
-            this.requestedCrmCodes = requestedSet; // overwrite with PE's requested set
-            console.log('PE requested CRMs:', [...requestedSet]);
+            this.requestedCrmCodes = requestedSet;
 
             if (requestedSet && requestedSet.size) {
                 try {
@@ -401,16 +373,9 @@ export default class AvailabilitySearch extends LightningElement {
                 }
             }
 
-
-            // If both dates are present, compute nights so group headers are correct
             const peStart = payload.Start_Date__c || '';
             const peEnd = payload.End_Date__c || '';
             const peNights = (peStart && peEnd) ? this.computeNights(peStart, peEnd) : '';
-
-            // this.appendResultsFromRaw(raw, "Agent", {
-            //     peStart: payload.Start_Date__c || '',
-            //     peEnd: payload.End_Date__c || ''
-            // });
 
             this.appendResultsFromRaw(raw, "Agent", {
                 requestedCrms: [...requestedSet],
@@ -498,9 +463,7 @@ export default class AvailabilitySearch extends LightningElement {
         this.rows = mergedRows;
         this.groups = this.groupBySupplier(mergedRows);
 
-        // Merge any explicitly requested CRMs (from search or PE) that returned no rows
         if (meta?.requestedCrms && meta.requestedCrms.length) {
-            // Update the tracking set (so both search and PE can accumulate if desired)
             meta.requestedCrms.forEach(c => { if (c) this.requestedCrmCodes.add(c); });
         }
         this.injectEmptyGroupsForRequested(meta);
@@ -548,7 +511,7 @@ export default class AvailabilitySearch extends LightningElement {
         const s = new Date(`${startIso}T00:00:00`);
         const e = new Date(`${endIso}T00:00:00`);
         const days = Math.max(1, Math.round((e - s) / (1000 * 60 * 60 * 24)));
-        const nights = Math.max(1, days); // checkout = start + nights + 1
+        const nights = Math.max(1, days);
         return String(nights);
     };
 
@@ -567,7 +530,7 @@ export default class AvailabilitySearch extends LightningElement {
                 if (crm) out.add(crm);
             });
         } catch (e) {
-            // ignore parse errors; we just won't add any requested CRMs
+            console.error('Failed to parse requested CRMs', e);
         }
         return out;
     }
@@ -584,7 +547,7 @@ export default class AvailabilitySearch extends LightningElement {
         const defaultEnd = defaultStart ? this.computeEndDate(defaultStart, defaultNights) : '';
 
         const added = missing.map(crm => {
-            const supplierName = this.crmNameMap[crm] || crm; // now likely filled from Apex for PE
+            const supplierName = this.crmNameMap[crm] || crm;
             const ferret = this.ferretDestinations?.[crm] || '';
             let firstLocality = '';
             if (ferret) firstLocality = this.pickParentDestination(ferret) || ferret;
@@ -608,8 +571,6 @@ export default class AvailabilitySearch extends LightningElement {
             .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
         this.buildDateSections();
     }
-
-
 
     parseMidnight(iso) {
         if (!iso) return null;
@@ -751,7 +712,6 @@ export default class AvailabilitySearch extends LightningElement {
 
     handleInput = (e) => {
         const { name, value } = e.target;
-        console.log(`Changed ${name} : ${value}`);
 
         let next = { ...this.filters, [name]: value };
 
@@ -945,7 +905,6 @@ export default class AvailabilitySearch extends LightningElement {
     };
 
     decodeHtml(str = '') {
-        // Fast + safe HTML entity decode
         const txt = document.createElement('textarea');
         txt.innerHTML = str;
         return txt.value;
@@ -1016,13 +975,9 @@ export default class AvailabilitySearch extends LightningElement {
             });
 
             const requestPayload = { records: payloads };
-            console.log('Request payload:', JSON.stringify(requestPayload));
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
-            console.log('API raw response:', raw);
-
-            // this.appendResultsFromRaw(raw, "Search");
             this.appendResultsFromRaw(raw, "Search", {
                 requestedCrms: [...this.requestedCrmCodes],
                 peStart: '', peEnd: ''
@@ -1089,24 +1044,13 @@ export default class AvailabilitySearch extends LightningElement {
 
         const currency = stay?.Currency || 'ZAR';
         const nettPrice = stay?.AgentPrice ?? stay?.TotalPrice;
-        console.log('Nett Price:', nettPrice);
-        console.log('Country:', country);
-        console.log('Button Name:', buttonName);
-        console.log('CRM Code:', crmCode);
-
-        console.log('Country Markup:', this.countryMarkups[country] || 0);
-        console.log('Service Type Markup:', this.serviceTypeMarkups[buttonName] || 0);
-        console.log('Supplier Markup:', this.supplierMarkups[crmCode] || 0);
 
         const markup = ((this.countryMarkups[country] || 0) / 100 + (this.serviceTypeMarkups[buttonName] || 0) / 100 + ((this.supplierMarkups[crmCode] || 0) / 100)) * 100;
 
-        console.log('Total Markup %:', markup);
         const gp = (1 - (1 / (1 + markup / 100))) * 100;
-        console.log('Calculated GP %:', gp);
 
         const sellPrice = Math.round(nettPrice / (1 - gp / 100));
 
-        console.log('Calculated Sell Price:', sellPrice);
 
         const nett = this.formatNetMoney(nettPrice, currency);
         const sell = this.formatMoney(sellPrice, currency);
@@ -1187,7 +1131,6 @@ export default class AvailabilitySearch extends LightningElement {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         const selectedLocs = selectedOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedLocations = selectedLocs;
-        console.log('Selected locations:', selectedLocs);
         this.getHotels();
     };
 
@@ -1218,7 +1161,6 @@ export default class AvailabilitySearch extends LightningElement {
         this.selectedSupplierCrmCodes = selectedSupplierOptions.map(opt => opt.value);
         const selectedSup = selectedSupplierOptions.map(opt => ({ value: opt.value, label: opt.label }));
         this.selectedSuppliers = selectedSup;
-        console.log('Selected suppliers:', selectedSup);
         (this.selectedSuppliers || []).forEach(s => {
             if (s?.value && s?.label) this.crmNameMap[s.value] = s.label;
         });
@@ -1227,19 +1169,16 @@ export default class AvailabilitySearch extends LightningElement {
     handleChangeStarRating(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedStarRatings = selectedOptions.map(opt => opt.value);
-        console.log('Selected star ratings:', this.selectedStarRatings);
     };
 
     handleChangeSupplierStatus(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedSupplierStatuses = selectedOptions.map(opt => opt.value);
-        console.log('Selected supplier statuses:', this.selectedSupplierStatuses);
     };
 
     handleChangeAttractions(event) {
         const selectedOptions = event.detail.options.filter(opt => opt.checked);
         this.selectedAttractions = selectedOptions.map(opt => opt.value);
-        console.log('Selected attractions:', this.selectedAttractions);
     };
 
     handleRowCheckboxChange = (e) => {
@@ -1448,11 +1387,8 @@ export default class AvailabilitySearch extends LightningElement {
                         supplierDescription: '',
                         serviceDescription: ''
                     };
-                    console.log("Saving QLI with params:", params);
 
                     const result = await SaveQuoteLineItem(params);
-
-                    console.log('SaveQuoteLineItem result:', result);
 
                     if (Array.isArray(result) && result.length === 0) {
                         ok += 1;
@@ -1526,7 +1462,7 @@ export default class AvailabilitySearch extends LightningElement {
         if (!isoLike) return '—';
         const d = new Date(isoLike);
         if (isNaN(d)) return '—';
-        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); // e.g., 1 May 2025
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
     getEffectiveGroupFilters(crmCode) {
@@ -1567,7 +1503,6 @@ export default class AvailabilitySearch extends LightningElement {
 
         this.buildDateSections();
 
-        console.log('Group edits:', this.groupEdits);
     };
 
     get headerText() {
@@ -1603,13 +1538,8 @@ export default class AvailabilitySearch extends LightningElement {
         const crm = e.currentTarget?.dataset?.crm;
         if (!crm) return;
 
-        console.log(`Searching for hotel group ${crm}…`);
-        console.log('starting groups:', JSON.stringify(this.groups));
-
         try {
             this.setGroupLoading(crm, true);
-
-            console.log('Current groups:', JSON.stringify(this.groups));
 
             const eff = this.getEffectiveGroupFilters(crm);
             const effStart = eff.startDate;
@@ -1647,20 +1577,12 @@ export default class AvailabilitySearch extends LightningElement {
                 MaximumOptions: 30
             }];
 
-            console.log(`Group search payload for ${crm}:`, { records });
-
             const body = await getOptions({ reqPayload: JSON.stringify({ records }) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
             let newRows = this.transformApiData(raw).filter(r => r.crmCode === crm);
 
             newRows = newRows.filter(r => this.isOptAllowed(r.optId));
-
-            // if (this.filters.liveAvailability === 'OK') {
-            //     newRows = newRows.filter(r => r.status === 'Available');
-            // } else if (this.filters.liveAvailability === 'RQ') {
-            //     newRows = newRows.filter(r => r.status === 'On Request');
-            // }
 
             const groupStar = (this.groupEdits?.[crm]?.starRating || '').trim();
             const starsToFilter = groupStar ? [groupStar] : (this.selectedStarRatings || []);
@@ -1715,14 +1637,11 @@ export default class AvailabilitySearch extends LightningElement {
             const refreshedRows = sorted.map((r, i) => ({ ...r, id: `${crm}-${i}-${ts}` }));
             this.rows = [...others, ...refreshedRows];
 
-            console.log("result : ", newRows);
-
         } catch (err) {
             const msg = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
             this.showToast('Error', msg, 'error');
         } finally {
             this.setGroupLoading(crm, false);
-            console.log('end groups:', JSON.stringify(this.groups));
         }
     };
 

@@ -2,81 +2,66 @@
     height:auto;
 }
 
-/* Let the selected-pills container show its content fully */
 .slds-listbox_selection-group,
 .cmpl-pill-group {
   overflow: visible;
 }
 
-/* Pill layout: make room for the X */
-.cmpl-pill {
-  display: inline-flex;        /* layout text + X horizontally */
-  align-items: center;
-  max-width: 100%;
-}
-
-/* This makes the text truncate with … and not steal the X’s space */
-.cmpl-pill__label {
-  flex: 1 1 auto;
-  min-width: 0;                /* critical for truncation in flex */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-/* Keep a little gap before the X */
-.cmpl-pill__remove {
-  flex: 0 0 auto;
-  margin-left: 0.25rem;
-}
-
-
-/* COLLAPSED (default): show exactly one row of pills, clip the rest */
-.slds-listbox_selection-group:not(.slds-listbox_expanded) {
-  max-height: 2.25rem; /* ~ one pill row height */
-  overflow: hidden;
-}
-
-/* EXPANDED: show all rows */
-.slds-listbox_selection-group.slds-listbox_expanded {
-  max-height: none;
-  overflow: visible;
-}
-
-/* Custom pill layout so the X never gets pushed out */
 .cmpl-pill {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
 }
 
-/* Truncate label with … and allow it to shrink next to the X */
 .cmpl-pill__label {
   flex: 1 1 auto;
-  min-width: 0;                /* critical for truncation inside flex */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
 }
 
-/* Keep a small gap before the X */
 .cmpl-pill__remove {
   flex: 0 0 auto;
   margin-left: 0.25rem;
 }
 
-/* Container: one vertical column; add a max-height if you want scroll */
-.cmpl-pill-column {
-  width: 100%;
-  /* optional: limit height and scroll
-  max-height: 14rem;
-  overflow: auto;
-  */
+
+.slds-listbox_selection-group:not(.slds-listbox_expanded) {
+  max-height: 2.25rem;
+  overflow: hidden;
 }
 
-/* Each pill row is full width, with border and spacing */
+.slds-listbox_selection-group.slds-listbox_expanded {
+  max-height: none;
+  overflow: visible;
+}
+
+.cmpl-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+.cmpl-pill__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.cmpl-pill__remove {
+  flex: 0 0 auto;
+  margin-left: 0.25rem;
+}
+
+.cmpl-pill-column {
+  width: 100%;
+}
+
 .cmpl-pill-row {
   display: flex;
   align-items: center;
@@ -89,7 +74,6 @@
   background: #fff;
 }
 
-/* Long text truncates with …; min-width:0 is critical in flex */
 .cmpl-pill-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -98,7 +82,6 @@
   white-space: nowrap;
 }
 
-/* X stays aligned to the right, never pushed out */
 .cmpl-pill-remove {
   flex: 0 0 auto;
 }

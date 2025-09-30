@@ -7,7 +7,6 @@
 
             <div class="slds-p-horizontal_medium slds-p-vertical_small">
                 <div class="slds-grid slds-wrap slds-gutters">
-                    <!-- Row 1 -->
                     <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-5">
                         <lightning-combobox name="serviceType" label="Service Type" value={filters.serviceType}
                             options={serviceTypeOptions} onchange={handleInput} required>
@@ -37,7 +36,6 @@
                         </lightning-combobox>
                     </div>
 
-                    <!-- Row 2 -->
                     <template if:true={loadLoc}>
                         <div class="slds-col slds-size_1-of-2 slds-large-size_2-of-5">
                             <c-multi-select-picklist label="Location(s)" required="true" show-pills="true"
@@ -62,7 +60,6 @@
                         </lightning-combobox>
                     </div>
 
-                    <!-- Row 3 -->
                     <div class="slds-col slds-size_2-of-5">
                         <c-multi-select-picklist label="Supplier(s)" show-pills="true"
                             onvaluechange={handleChangeSupplier} role="cms-picklist"></c-multi-select-picklist>
@@ -162,7 +159,6 @@
             </lightning-spinner>
         </template>
 
-        <!-- DATE-SECTION RENDERING -->
         <template if:true={dateSections.length}>
             <div class="result-section">
                 <div class="results-header">
@@ -176,7 +172,6 @@
                     </div>
                 </div>
 
-                <!-- Loop sections -->
                 <template for:each={dateSections} for:item="sec">
                     <section key={sec.key} class="date-section">
                         <div class="date-section__header">
@@ -193,7 +188,6 @@
                             </template>
                         </div>
 
-                        <!-- Groups inside a section -->
                         <template for:each={sec.groups} for:item="grp">
                             <div key={grp.crmCode} class="group-block">
                                 <div class="supplier-header-row" data-crm={grp.crmCode} onfocusin={activateHeaderZ}
@@ -358,7 +352,6 @@
             </div>
         </template>
 
-        <!-- No results message (dateSections-aware) -->
         <template if:true={showNoHotels}>
             <div class="result-section">
                 <div class="no-results">

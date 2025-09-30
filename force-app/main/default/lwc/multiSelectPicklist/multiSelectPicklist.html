@@ -55,30 +55,25 @@
                 </ul>
             </div>
         </template>
-<template if:true={showPillView}>
-  <div class="cmpl-pill-column">
-    <ul class="slds-listbox slds-listbox_vertical" role="listbox">
-      <template for:each={options} for:item="option">
-        <template if:true={option.checked}>
-          <li key={option.index} class="slds-listbox__item">
-            <!-- Full-width single row; hover shows full text via title -->
-            <div class="cmpl-pill-row" role="pill" title={option.label}>
-              <span class="cmpl-pill-label slds-truncate">{option.label}</span>
-              <lightning-button-icon
-                class="cmpl-pill-remove"
-                icon-name="utility:close"
-                variant="bare"
-                alternative-text="Remove"
-                onclick={onRemove}
-                data-name={option.label}>
-              </lightning-button-icon>
+        <template if:true={showPillView}>
+            <div class="cmpl-pill-column">
+                <ul class="slds-listbox slds-listbox_vertical" role="listbox">
+                    <template for:each={options} for:item="option">
+                        <template if:true={option.checked}>
+                            <li key={option.index} class="slds-listbox__item">
+                                <div class="cmpl-pill-row" role="pill" title={option.label}>
+                                    <span class="cmpl-pill-label slds-truncate">{option.label}</span>
+                                    <lightning-button-icon class="cmpl-pill-remove" icon-name="utility:close"
+                                        variant="bare" alternative-text="Remove" onclick={onRemove}
+                                        data-name={option.label}>
+                                    </lightning-button-icon>
+                                </div>
+                            </li>
+                        </template>
+                    </template>
+                </ul>
             </div>
-          </li>
         </template>
-      </template>
-    </ul>
-  </div>
-</template>
 
 
 
