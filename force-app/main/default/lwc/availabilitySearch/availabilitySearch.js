@@ -361,7 +361,10 @@ export default class AvailabilitySearch extends LightningElement {
             }
 
             const requestedSet = this.parseRequestedCrmsFromRequestJson(payload.Request_JSON__c);
-            this.requestedCrmCodes = requestedSet;
+            this.requestedCrmCodes = new Set([
+                ...(this.requestedCrmCodes || []),
+                ...(requestedSet || [])
+            ]);
 
             if (requestedSet && requestedSet.size) {
                 try {
@@ -951,7 +954,10 @@ export default class AvailabilitySearch extends LightningElement {
                     ? this.selectedSupplierCrmCodes
                     : [null];
 
-            this.requestedCrmCodes = new Set((hotelCrmCodes || []).filter(Boolean));
+            this.requestedCrmCodes = new Set([
+                ...(this.requestedCrmCodes || []),
+                ...((hotelCrmCodes || []).filter(Boolean))
+            ]);
 
             locationData.forEach(loc => {
                 const locationCode = loc.LOC_Name__c;
@@ -979,7 +985,7 @@ export default class AvailabilitySearch extends LightningElement {
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
             this.appendResultsFromRaw(raw, "Search", {
-                requestedCrms: [...this.requestedCrmCodes],
+                requestedCrms: (hotelCrmCodes || []).filter(Boolean),
                 peStart: '', peEnd: ''
             });
         } catch (err) {
@@ -991,6 +997,38 @@ export default class AvailabilitySearch extends LightningElement {
             this.hasSearched = true;
         }
     };
+
+    handleGroupHeaderInput = (e) => {
+        const crm = e.currentTarget.dataset.crm;
+        const { name, value } = e.target;
+
+        const prev = this.groupEdits[crm] || {};
+        const next = { ...prev, [name]: value };
+
+        if (name === 'startDate' || name === 'durationNights') {
+            const start = next.startDate ?? this.filters.startDate;
+            const nights = next.durationNights ?? this.filters.durationNights;
+            next.endDate = this.computeEndDate(start, nights);
+        }
+
+        this.groupEdits = { ...this.groupEdits, [crm]: next };
+
+        this.groups = this.groups.map(g => {
+            if (g.crmCode !== crm) return g;
+            const eff = this.getEffectiveGroupFilters(crm);
+            return {
+                ...g,
+                uiStartDate: eff.startDate || '',
+                uiEndDate: eff.endDate || '',
+                uiDurationNights: String(eff.durationNights || '1'),
+                uiQuantityRooms: String(eff.quantityRooms || '1'),
+                uiStarRating: eff.starRating || ''
+            };
+        });
+
+        this.buildDateSections();
+    };
+
 
     transformApiData(apiPayload) {
         const payload = (typeof apiPayload === 'string') ? JSON.parse(apiPayload) : apiPayload;
@@ -1613,6 +1651,29 @@ export default class AvailabilitySearch extends LightningElement {
                 return nx - ny;
             });
             const sorted = sortItems(newRows);
+
+            const groupExists = (this.groups || []).some(g => g.crmCode === crm);
+            if (!groupExists) {
+                const supplierName = this.crmNameMap[crm] || crm;
+                const ferret = this.ferretDestinations?.[crm] || '';
+                const firstLocality = this.pickParentDestination(ferret) || ferret || '';
+                const hdrEnd = effStart ? this.computeEndDate(effStart, effNights) : '';
+                const newGroup = {
+                    crmCode: crm,
+                    supplier: supplierName,
+                    items: [],
+                    firstLocality,
+                    ferretDestinationLocation: ferret || firstLocality,
+                    uiStartDate: effStart || '',
+                    uiEndDate: hdrEnd || '',
+                    uiDurationNights: String(effNights || '1'),
+                    uiQuantityRooms: String(effRooms || '1'),
+                    uiStarRating: groupStar || '',
+                    loading: false
+                };
+                this.groups = [...(this.groups || []), newGroup]
+                    .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
+            }
 
             this.groups = (this.groups || []).map(g => {
                 if (g.crmCode !== crm) return g;

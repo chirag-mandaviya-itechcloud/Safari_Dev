@@ -203,7 +203,8 @@
                                         <span class="header-suffix">Start Date</span>
                                         <lightning-input type="date" name="startDate" value={grp.uiStartDate}
                                             data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
-                                            class="header-input" variant="label-hidden">
+                                            oninput={handleGroupHeaderInput} class="header-input"
+                                            variant="label-hidden">
                                         </lightning-input>
                                     </div>
 
@@ -219,7 +220,8 @@
                                         <lightning-input type="number" name="durationNights"
                                             value={grp.uiDurationNights} min="1" max="30" step="1"
                                             data-crm={grp.crmCode} onchange={handleGroupHeaderChange}
-                                            class="header-input" variant="label-hidden">
+                                            oninput={handleGroupHeaderInput} class="header-input"
+                                            variant="label-hidden">
                                         </lightning-input>
                                     </div>
 
@@ -227,8 +229,8 @@
                                         <span class="header-suffix">Rooms</span>
                                         <lightning-input type="number" name="quantityRooms" value={grp.uiQuantityRooms}
                                             min="1" max="9" step="1" data-crm={grp.crmCode}
-                                            onchange={handleGroupHeaderChange} class="header-input"
-                                            variant="label-hidden">
+                                            oninput={handleGroupHeaderInput} onchange={handleGroupHeaderChange}
+                                            class="header-input" variant="label-hidden">
                                         </lightning-input>
                                     </div>
 
