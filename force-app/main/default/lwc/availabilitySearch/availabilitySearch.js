@@ -573,6 +573,21 @@ export default class AvailabilitySearch extends LightningElement {
         this.groups = [...(this.groups || []), ...added]
             .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
         this.buildDateSections();
+
+        (added || []).forEach(g => {
+            if (!this.groupEdits[g.crmCode]) {
+                this.groupEdits = {
+                    ...this.groupEdits,
+                    [g.crmCode]: {
+                        startDate: g.uiStartDate || '',
+                        durationNights: g.uiDurationNights || '1',
+                        endDate: g.uiEndDate || '',
+                        quantityRooms: g.uiQuantityRooms || String(this.filters.quantityRooms || '1'),
+                        starRating: g.uiStarRating || ''
+                    }
+                };
+            }
+        });
     }
 
     parseMidnight(iso) {
@@ -1505,11 +1520,22 @@ export default class AvailabilitySearch extends LightningElement {
 
     getEffectiveGroupFilters(crmCode) {
         const base = this.filters;
+        const ui = (this.groups || []).find(g => g.crmCode === crmCode) || {};
+
         const ov = this.groupEdits[crmCode] || {};
-        const merged = { ...base, ...ov };
-        merged.endDate = merged.endDate || this.computeEndDate(merged.startDate, merged.durationNights);
-        return merged;
-    };
+
+        const startDate = ov.startDate ?? ui.uiStartDate ?? base.startDate ?? '';
+        const durationNights = String(ov.durationNights ?? ui.uiDurationNights ?? base.durationNights ?? '1');
+        const quantityRooms = String(ov.quantityRooms ?? ui.uiQuantityRooms ?? base.quantityRooms ?? '1');
+        const starRating = ov.starRating ?? ui.uiStarRating ?? base.starRating ?? '';
+
+        const endDate =
+            (ov.endDate ?? ui.uiEndDate) ||
+            (startDate ? this.computeEndDate(startDate, durationNights) : '');
+
+        return { ...base, startDate, durationNights, quantityRooms, starRating, endDate };
+    }
+
 
     handleGroupHeaderChange = (e) => {
         const crm = e.currentTarget.dataset.crm;
@@ -1673,6 +1699,19 @@ export default class AvailabilitySearch extends LightningElement {
                 };
                 this.groups = [...(this.groups || []), newGroup]
                     .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
+
+                if (!this.groupEdits[crm]) {
+                    this.groupEdits = {
+                        ...this.groupEdits,
+                        [crm]: {
+                            startDate: newGroup.uiStartDate,
+                            durationNights: newGroup.uiDurationNights,
+                            endDate: newGroup.uiEndDate,
+                            quantityRooms: newGroup.uiQuantityRooms,
+                            starRating: newGroup.uiStarRating
+                        }
+                    };
+                }
             }
 
             this.groups = (this.groups || []).map(g => {
