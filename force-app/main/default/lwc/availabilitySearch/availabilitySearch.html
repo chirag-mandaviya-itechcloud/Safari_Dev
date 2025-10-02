@@ -301,10 +301,12 @@
                                             <template for:each={grp.items} for:item="row">
                                                 <tr key={row.id}>
                                                     <td data-label="Service">
-                                                        <div class="slds-truncate">{row.service}</div>
+                                                        <div class="slds-truncate" title={row.service}>{row.service}
+                                                        </div>
                                                     </td>
                                                     <td data-label="Rate Category">
-                                                        <div class="slds-truncate">{row.rateCategory}</div>
+                                                        <div class="slds-truncate" title={row.rateCategory}>
+                                                            {row.rateCategory}</div>
                                                     </td>
                                                     <td data-label="Rate Description">
                                                         <div class="slds-truncate" title={row.rateDescription}>
@@ -330,7 +332,7 @@
                                                     </td>
                                                     <td data-label="Select" class="select-cell">
                                                         <lightning-input type="checkbox" variant="label-hidden"
-                                                            data-row-key={row.selKey} checked={row.isSelected}
+                                                            data-row-key={row.uniqueKey} checked={row.isSelected}
                                                             disabled={row.addDisabled}
                                                             onchange={handleRowCheckboxChange}>
                                                         </lightning-input>

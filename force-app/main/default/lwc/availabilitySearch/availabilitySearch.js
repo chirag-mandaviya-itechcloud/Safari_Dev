@@ -396,6 +396,19 @@ export default class AvailabilitySearch extends LightningElement {
 
         let filtered = fetchedRows.filter(r => this.isOptAllowed(r.optId));
 
+        let ctxStart = '';
+        let ctxNights = '1';
+
+        if (source === 'Search') {
+            ctxStart = this.filters.startDate || '';
+            ctxNights = String(this.filters.durationNights || '1');
+        } else if (source === 'Agent') {
+            ctxStart = meta?.peStart || this.filters.startDate || '';
+            ctxNights = String(meta?.peNights || this.filters.durationNights || '1');
+        }
+
+        filtered = this.applyDateContext(filtered, ctxStart, ctxNights);
+
         if (!this.lastSelectedLocationCodes || this.lastSelectedLocationCodes.length === 0) {
             const derived = [...new Set(filtered.map(r => r.locCode).filter(Boolean))];
             if (derived.length > 0) this.lastSelectedLocationCodes = derived;
@@ -418,10 +431,6 @@ export default class AvailabilitySearch extends LightningElement {
             if (this.selectedSupplierStatuses && this.selectedSupplierStatuses.length > 0) {
                 filtered = filtered.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
             }
-
-            const searchStart = this.filters.startDate || '';
-            const searchNights = String(this.filters.durationNights || '1');
-            this.freezeGroupDatesForSearch(filtered, searchStart, searchNights);
         }
 
         if (source === "Agent" && (meta?.peStart || meta?.peEnd)) {
@@ -449,19 +458,19 @@ export default class AvailabilitySearch extends LightningElement {
             const selected = !!this.selectedKeys[r.selKey];
             return {
                 ...r,
-                id: `${r.selKey}-${ts}-${i}`,
+                id: `${r.uniqueKey}-${ts}-${i}`,
                 isSelected: selected,
                 selectButtonClass: this.computeSelectClass(selected),
             };
         });
 
-        const existingBySelKey = new Map((this.rows || []).map(r => [r.selKey, r]));
+        const existingByUniqueKey = new Map((this.rows || []).map(r => [r.uniqueKey, r]));
         for (const nr of normalizedNew) {
-            if (!existingBySelKey.has(nr.selKey)) {
-                existingBySelKey.set(nr.selKey, nr);
+            if (!existingByUniqueKey.has(nr.uniqueKey)) {
+                existingByUniqueKey.set(nr.uniqueKey, nr);
             }
         }
-        const mergedRows = Array.from(existingBySelKey.values());
+        const mergedRows = Array.from(existingByUniqueKey.values());
 
         this.rows = mergedRows;
         this.groups = this.groupBySupplier(mergedRows);
@@ -636,31 +645,13 @@ export default class AvailabilitySearch extends LightningElement {
         return `${day(s)} ${mon(s)} - ${day(e)} ${mon(e)} ${yr(e)}`;
     };
 
-    freezeGroupDatesForSearch(rows, searchStart, searchNights) {
-        const start = searchStart || '';
-        const nights = String(searchNights || '1');
-        const end = start ? this.computeEndDate(start, nights) : '';
-
-        const crms = new Set(rows.map(r => r.crmCode).filter(Boolean));
-        crms.forEach(crm => {
-            if (!this.groupEdits[crm]) {
-                this.groupEdits[crm] = {
-                    startDate: start,
-                    durationNights: nights,
-                    endDate: end
-                };
-            }
-        });
-    };
-
     buildDateSections() {
         const buckets = new Map();
         let earliestStart = null;
 
         (this.groups || []).forEach(g => {
-            const eff = this.getEffectiveGroupFilters(g.crmCode);
-            const start = g.uiStartDate || eff.startDate || '';
-            const end = g.uiEndDate || eff.endDate || '';
+            const start = g.uiStartDate || '';
+            const end = g.uiEndDate || '';
 
             const key = this.makeDateKey(start, end);
 
@@ -1051,6 +1042,28 @@ export default class AvailabilitySearch extends LightningElement {
         }
     };
 
+    applyDateContext(rows, startIso, nightsStr) {
+        const start = startIso || '';
+        const nights = String(nightsStr || '1');
+        const end = start ? this.computeEndDate(start, nights) : '';
+        const dateKey = this.makeDateKey(start, end);
+
+        return (rows || []).map(r => {
+            const uniqueKey = `${r.selKey}|${dateKey}`;
+            const isSelected = !!this.selectedKeys[uniqueKey];
+            return {
+                ...r,
+                dateStart: start,
+                dateEnd: end,
+                dateKey,
+                uniqueKey,
+                isSelected,
+                selectButtonClass: this.computeSelectClass(isSelected)
+            };
+        });
+    }
+
+
     handleGroupHeaderInput = (e) => {
         const crm = e.currentTarget.dataset.crm;
         const { name, value } = e.target;
@@ -1279,13 +1292,13 @@ export default class AvailabilitySearch extends LightningElement {
         this.selectedKeys = { ...this.selectedKeys, [rowKey]: checked };
 
         this.rows = (this.rows || []).map(r =>
-            r.selKey === rowKey ? { ...r, isSelected: checked } : r
+            r.uniqueKey === rowKey ? { ...r, isSelected: checked } : r
         );
 
         this.groups = (this.groups || []).map(g => ({
             ...g,
             items: g.items.map(it =>
-                it.selKey === rowKey ? { ...it, isSelected: checked } : it
+                it.uniqueKey === rowKey ? { ...it, isSelected: checked } : it
             )
         }));
 
@@ -1324,10 +1337,24 @@ export default class AvailabilitySearch extends LightningElement {
 
     groupBySupplier(rows) {
         const map = new Map();
+
         rows.forEach(r => {
-            const key = r.crmCode || '—';
-            if (!map.has(key)) map.set(key, { crmCode: key, supplier: r.supplier || '—', items: [] });
-            map.get(key).items.push(r);
+            const crm = r.crmCode || '—';
+            const dkey = r.dateKey || this.makeDateKey(r.dateStart || '', r.dateEnd || '');
+            const gkey = `${crm}|${dkey}`;
+            if (!map.has(gkey)) {
+                map.set(gkey, {
+                    groupKey: gkey,
+                    crmCode: crm,
+                    dateKey: dkey,
+                    supplier: r.supplier || '—',
+                    uiStartDate: r.dateStart || '',
+                    uiEndDate: r.dateEnd || '',
+                    uiDurationNights: this.computeNights(r.dateStart, r.dateEnd) || '1',
+                    items: []
+                });
+            }
+            map.get(gkey).items.push(r);
         });
 
         const sortItems = (arr) => arr.slice().sort((x, y) => {
@@ -1338,37 +1365,29 @@ export default class AvailabilitySearch extends LightningElement {
             return nx - ny;
         });
 
-        const prevLoading = new Map((this.groups || []).map(g => [g.crmCode, !!g.loading]));
+        const groups = Array.from(map.values()).map(g => {
+            const sorted = sortItems(g.items);
+            const firstLocality = sorted.length > 0 ? sorted[0].locality : '';
+            let ferretDestinationLocation = this.ferretDestinations[g.crmCode] || firstLocality;
 
-        const groups = Array.from(map.values())
-            .sort((a, b) => a.supplier.localeCompare(b.supplier))
-            .map(g => {
-                const ge = this.groupEdits[g.crmCode] || {};
-                const start = ge.startDate ?? this.filters.startDate ?? '';
-                const nights = String(ge.durationNights ?? this.filters.durationNights ?? '1');
-                const end = start ? (ge.endDate ?? this.computeEndDate(start, nights)) : '';
-                const firstLocality = g.items.length > 0 ? g.items[0].locality : '';
+            return {
+                ...g,
+                items: sorted,
+                firstLocality,
+                ferretDestinationLocation,
+                uiQuantityRooms: String(this.filters.quantityRooms || '1'),
+                uiStarRating: '',
+                loading: false
+            };
+        }).sort((a, b) => {
+            const s = (a.supplier || '').localeCompare(b.supplier || '');
+            if (s) return s;
+            return (a.uiStartDate || '').localeCompare(b.uiStartDate || '');
+        });
 
-                let ferretDestinationLocation = this.ferretDestinations[g.crmCode];
-                if (!ferretDestinationLocation) {
-                    ferretDestinationLocation = firstLocality;
-                }
-
-                return {
-                    ...g,
-                    items: sortItems(g.items),
-                    firstLocality,
-                    ferretDestinationLocation,
-                    uiStartDate: start || '',
-                    uiEndDate: end || '',
-                    uiDurationNights: nights,
-                    uiQuantityRooms: String(ge.quantityRooms ?? this.filters.quantityRooms ?? '1'),
-                    uiStarRating: ge.starRating ?? '',
-                    loading: prevLoading.get(g.crmCode) || false,
-                };
-            });
         return groups;
-    };
+    }
+
 
 
     setGroupLoading(crmCode, value) {
@@ -1421,7 +1440,7 @@ export default class AvailabilitySearch extends LightningElement {
     };
 
     handleSaveSelected = async () => {
-        const selected = (this.rows || []).filter(r => !!this.selectedKeys[r.selKey] && !r.addDisabled);
+        const selected = (this.rows || []).filter(r => !!this.selectedKeys[r.uniqueKey] && !r.addDisabled);
         if (selected.length === 0) {
             this.showToast('Nothing to save', 'Please select one or more options first.', 'warning');
             return;
@@ -1437,12 +1456,12 @@ export default class AvailabilitySearch extends LightningElement {
         try {
             for (const row of selected) {
                 try {
-                    const eff = this.getEffectiveGroupFilters(row.crmCode);
-
                     const selectedOPT = await getOptByOptCode({ optCode: row.optId });
                     if (!selectedOPT || !selectedOPT[0]) {
                         throw new Error(`OPT not found for ${row.optId}`);
                     }
+
+                    const durationNights = this.computeNights(row.dateStart, row.dateEnd) || '1';
 
                     const roomConfigurations = this.buildQliRoomConfigurations(row);
 
@@ -1462,9 +1481,9 @@ export default class AvailabilitySearch extends LightningElement {
                         overrideDetails: false,
                         overridenSupplierPolicy: true,
                         selectedPassengers: [],
-                        serviceDate: eff.startDate,
-                        numberOfDays: String(eff.durationNights),
-                        displayDuration: String(eff.durationNights),
+                        serviceDate: row.dateStart,
+                        numberOfDays: String(durationNights),
+                        displayDuration: String(durationNights),
                         quoteId: this.recordId,
                         roomConfigurations,
                         logistics: {},
@@ -1483,18 +1502,18 @@ export default class AvailabilitySearch extends LightningElement {
 
                     if (Array.isArray(result) && result.length === 0) {
                         ok += 1;
-                        const k = row.selKey;
+                        const k = row.uniqueKey;
                         const newSel = { ...this.selectedKeys };
                         delete newSel[k];
                         this.selectedKeys = newSel;
 
                         this.rows = (this.rows || []).map(r =>
-                            r.selKey === k ? { ...r, isSelected: false, selectButtonClass: this.computeSelectClass(false) } : r
+                            r.uniqueKey === k ? { ...r, isSelected: false, selectButtonClass: this.computeSelectClass(false) } : r
                         );
                         this.groups = (this.groups || []).map(g => ({
                             ...g,
                             items: g.items.map(it =>
-                                it.selKey === k ? { ...it, isSelected: false, selectButtonClass: this.computeSelectClass(false) } : it
+                                it.uniqueKey === k ? { ...it, isSelected: false, selectButtonClass: this.computeSelectClass(false) } : it
                             )
                         }));
                     } else {
@@ -1686,6 +1705,8 @@ export default class AvailabilitySearch extends LightningElement {
 
             newRows = newRows.filter(r => this.isOptAllowed(r.optId));
 
+            newRows = this.applyDateContext(newRows, effStart, String(effNights));
+
             const groupStar = (this.groupEdits?.[crm]?.starRating || '').trim();
             const starsToFilter = groupStar ? [groupStar] : (this.selectedStarRatings || []);
             if (starsToFilter.length) {
@@ -1699,7 +1720,7 @@ export default class AvailabilitySearch extends LightningElement {
             }
 
             newRows = newRows.map(r => {
-                const isSel = !!this.selectedKeys[r.selKey];
+                const isSel = !!this.selectedKeys[r.uniqueKey];
                 return {
                     ...r,
                     isSelected: isSel,
@@ -1770,9 +1791,9 @@ export default class AvailabilitySearch extends LightningElement {
 
             this.buildDateSections();
 
-            const others = (this.rows || []).filter(r => r.crmCode !== crm);
+            const others = (this.rows || []).filter(r => r.crmCode !== crm || r.dateKey !== newRows[0]?.dateKey);
             const ts = Date.now();
-            const refreshedRows = sorted.map((r, i) => ({ ...r, id: `${crm}-${i}-${ts}` }));
+            const refreshedRows = sorted.map((r, i) => ({ ...r, id: `${r.uniqueKey}-${ts}-${i}` }));
             this.rows = [...others, ...refreshedRows];
 
         } catch (err) {
