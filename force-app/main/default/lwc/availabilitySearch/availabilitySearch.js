@@ -111,7 +111,7 @@ export default class AvailabilitySearch extends LightningElement {
         this.loadTravelDates();
         this.starHeaderOptions = [...(this.starOptions || [])];
         this.initPeSubscription();
-        this.syncRoomsToQuantity(this.filters.quantityRooms);
+        this.syncRoomsToQuantity();
     };
 
     disconnectedCallback() {
@@ -753,7 +753,7 @@ export default class AvailabilitySearch extends LightningElement {
         return { id: idx + 1, roomType: 'DOUBLE AVAIL', adults: 0, children: 0, infants: 0, passengers: 0 };
     };
 
-    syncRoomsToQuantity(qty) {
+    /*syncRoomsToQuantity(qty) {
         const n = Math.max(1, parseInt(qty, 10) || 1);
         let rooms = [...(this.roomConfigs || [])];
         const oldLen = rooms.length;
@@ -791,7 +791,64 @@ export default class AvailabilitySearch extends LightningElement {
             passengers: (parseInt(r.adults) || 0) + (parseInt(r.children) || 0) + (parseInt(r.infants) || 0)
         }));
         this.validationError = '';
-    };
+    };*/
+
+    syncRoomsToQuantity(qty) {
+        let rooms = [...(this.roomConfigs || [])];
+
+        if (qty != null && rooms.length > 0) {
+            const numRooms = Math.max(1, parseInt(qty, 10));
+            if (rooms.length < numRooms) {
+                for (let i = rooms.length; i < numRooms; i++) {
+                    let r = this.makeDefaultRoom(i);
+                    r.id = i + 1;
+                    rooms.push(r);
+                }
+            } else if (rooms.length > numRooms) {
+                rooms = rooms.slice(0, numRooms);
+            }
+            this.roomConfigs = rooms.map((r, i) => ({
+                ...r,
+                id: i + 1,
+                passengers: (+r.adults || 0) + (+r.children || 0) + (+r.infants || 0)
+            }));
+            this.validationError = '';
+            return;
+        }
+
+        rooms = [];
+
+        let totalAdults = this.adults != null ? parseInt(this.adults) : 2;
+        let totalChildren = this.children != null ? parseInt(this.children) : 0;
+        let totalInfants = this.infants != null ? parseInt(this.infants) : 0;
+
+        const maxAdultsPerRoom = 2;
+        const maxChildrenPerRoom = 2;
+
+        while (totalAdults > 0 || totalChildren > 0 || totalInfants > 0) {
+            let assignAdults = Math.min(maxAdultsPerRoom, totalAdults);
+            let assignChildren = Math.min(maxChildrenPerRoom, totalChildren);
+            let assignInfants = totalInfants > 0 ? 1 : 0;
+
+            let r = this.makeDefaultRoom(rooms.length);
+            r.adults = assignAdults;
+            r.children = assignChildren;
+            r.infants = assignInfants;
+            r.passengers = assignAdults + assignChildren + assignInfants;
+            r.id = rooms.length + 1;
+
+            rooms.push(r);
+
+            totalAdults -= assignAdults;
+            totalChildren -= assignChildren;
+            totalInfants -= assignInfants;
+        }
+
+        this.roomConfigs = rooms;
+        this.filters.quantityRooms = String(rooms.length);
+        this.validationError = '';
+    }
+
 
     handleRoomChange = (e) => {
         const idx = Number(e.currentTarget.dataset.index);
@@ -880,29 +937,6 @@ export default class AvailabilitySearch extends LightningElement {
         }, { adults: 0, children: 0, infants: 0 });
     };
 
-    validateRoomTotals(rooms = this.roomConfigs) {
-        const s = this.sumRooms(rooms);
-        if (s.adults > (this.adults || 0)) {
-            this.showToast('Too many adults',
-                `You entered ${s.adults}, but the quote has ${this.adults} adult${this.adults === 1 ? '' : 's'}.`,
-                'error');
-            return false;
-        }
-        if (s.children > (this.children || 0)) {
-            this.showToast('Too many children',
-                `You entered ${s.children}, but the quote has ${this.children} ${this.children === 1 ? 'child' : 'children'}.`,
-                'error');
-            return false;
-        }
-        if (s.infants > (this.infants || 0)) {
-            this.showToast('Too many infants',
-                `You entered ${s.infants}, but the quote has ${this.infants} infant${this.infants === 1 ? '' : 's'}.`,
-                'error');
-            return false;
-        }
-        return true;
-    };
-
     validateRoomTotalsExact(rooms = this.roomConfigs) {
         const s = this.sumRooms(rooms);
         const mismatch =
@@ -913,8 +947,8 @@ export default class AvailabilitySearch extends LightningElement {
         if (mismatch) {
             this.showToast(
                 'Room totals must match quote',
-                `Entered A/C/I = ${s.adults}/${s.children}/${s.infants}; ` +
-                `Quote A/C/I = ${this.adults}/${this.children}/${this.infants}.`,
+                `Entered Adults/Children/Infants = ${s.adults}/${s.children}/${s.infants}; ` +
+                `Quote Adults/Children/Infants = ${this.adults}/${this.children}/${this.infants}.`,
                 'error'
             );
             return false;
@@ -995,9 +1029,13 @@ export default class AvailabilitySearch extends LightningElement {
                 });
             });
 
+            console.log('Search payloads', payloads);
+
             const requestPayload = { records: payloads };
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
+
+            console.log('Search results', raw);
 
             this.appendResultsFromRaw(raw, "Search", {
                 requestedCrms: (hotelCrmCodes || []).filter(Boolean),
