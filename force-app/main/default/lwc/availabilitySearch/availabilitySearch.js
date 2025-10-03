@@ -7,6 +7,7 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getOptByOptCode from '@salesforce/apex/HotelController.getOptByOptCode';
 import getLocationOptions from '@salesforce/apex/AvailabilitySearchController.getLocationOptions';
 import getSelectedLocationsWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedLocationsWithCodes';
+import getSelectedCRMWithCodes from '@salesforce/apex/AvailabilitySearchController.getSelectedCRMWithCodes';
 import getFerretDestinationFromCrmCode from '@salesforce/apex/AvailabilitySearchController.getFerretDestinationFromCrmCode';
 import getOptsExternalIds from '@salesforce/apex/AvailabilitySearchController.getOptsExternalIds';
 import getHotelsFromLocations from '@salesforce/apex/AvailabilitySearchController.getHotelsFromLocations';
@@ -443,9 +444,10 @@ export default class AvailabilitySearch extends LightningElement {
                 const startDate = meta.peStart || (this.groupEdits[crm]?.startDate ?? this.filters.startDate ?? '');
                 const durationNights = String(nightsFromPe || this.groupEdits[crm]?.durationNights || this.filters.durationNights || '1');
                 const endDate = startDate ? this.computeEndDate(startDate, durationNights) : '';
+                const gk = `${crm}|${this.makeDateKey(startDate, endDate)}`;
 
-                this.groupEdits[crm] = {
-                    ...this.groupEdits[crm],
+                this.groupEdits[gk] = {
+                    ...(this.groupEdits[gk] || {}),
                     startDate,
                     durationNights,
                     endDate
@@ -550,13 +552,14 @@ export default class AvailabilitySearch extends LightningElement {
     injectEmptyGroupsForRequested(meta = {}) {
         if (!this.requestedCrmCodes || this.requestedCrmCodes.size === 0) return;
 
-        const existing = new Set((this.groups || []).map(g => g.crmCode));
-        const missing = [...this.requestedCrmCodes].filter(c => c && !existing.has(c));
+        const existingCrms = new Set((this.groups || []).map(g => g.crmCode));
+        const missing = [...this.requestedCrmCodes].filter(c => c && !existingCrms.has(c));
         if (missing.length === 0) return;
 
         const defaultStart = meta.peStart || this.filters.startDate || '';
         const defaultNights = String(meta.peNights || this.filters.durationNights || '1');
         const defaultEnd = defaultStart ? this.computeEndDate(defaultStart, defaultNights) : '';
+        const defaultDateKey = this.makeDateKey(defaultStart, defaultEnd);
 
         const added = missing.map(crm => {
             const supplierName = this.crmNameMap[crm] || crm;
@@ -564,7 +567,23 @@ export default class AvailabilitySearch extends LightningElement {
             let firstLocality = '';
             if (ferret) firstLocality = this.pickParentDestination(ferret) || ferret;
 
+            const groupKey = `${crm}|${defaultDateKey}`;
+
+            if (!this.groupEdits[groupKey]) {
+                this.groupEdits = {
+                    ...this.groupEdits,
+                    [groupKey]: {
+                        startDate: defaultStart,
+                        durationNights: defaultNights,
+                        endDate: defaultEnd,
+                        quantityRooms: String(this.filters.quantityRooms || '1'),
+                        starRating: ''
+                    }
+                };
+            }
+
             return {
+                groupKey,
                 crmCode: crm,
                 supplier: supplierName,
                 items: [],
@@ -575,29 +594,16 @@ export default class AvailabilitySearch extends LightningElement {
                 uiDurationNights: defaultNights,
                 uiQuantityRooms: String(this.filters.quantityRooms || '1'),
                 uiStarRating: '',
-                loading: false
+                loading: false,
+                dateKey: defaultDateKey
             };
         });
 
         this.groups = [...(this.groups || []), ...added]
             .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
         this.buildDateSections();
-
-        (added || []).forEach(g => {
-            if (!this.groupEdits[g.crmCode]) {
-                this.groupEdits = {
-                    ...this.groupEdits,
-                    [g.crmCode]: {
-                        startDate: g.uiStartDate || '',
-                        durationNights: g.uiDurationNights || '1',
-                        endDate: g.uiEndDate || '',
-                        quantityRooms: g.uiQuantityRooms || String(this.filters.quantityRooms || '1'),
-                        starRating: g.uiStarRating || ''
-                    }
-                };
-            }
-        });
     }
+
 
     parseMidnight(iso) {
         if (!iso) return null;
@@ -980,43 +986,33 @@ export default class AvailabilitySearch extends LightningElement {
         }
 
         try {
-            const locationData = await getSelectedLocationsWithCodes({
-                locationIds: this.selectedLocations.map(l => l.value),
-            });
-            const newLocCodes = (locationData || []).map(l => l.LOC_Name__c);
 
-            const locUnion = new Set([...(this.lastSelectedLocationCodes || []), ...newLocCodes]);
-            this.lastSelectedLocationCodes = Array.from(locUnion);
-
-            const payloads = [];
-            const hotelCrmCodes =
+            const hotelCrmCodeIds =
                 (this.selectedSupplierCrmCodes && this.selectedSupplierCrmCodes.length > 0)
                     ? this.selectedSupplierCrmCodes
-                    : [null];
+                    : [];
 
-            this.requestedCrmCodes = new Set([
-                ...(this.requestedCrmCodes || []),
-                ...((hotelCrmCodes || []).filter(Boolean))
-            ]);
-
+            const locationData = await getSelectedCRMWithCodes({
+                locationIds: this.selectedLocations.map(l => l.value),
+                crmCodes: hotelCrmCodeIds,
+            });
+            const payloads = [];
             locationData.forEach(loc => {
-                const locationCode = loc.LOC_Name__c;
-                hotelCrmCodes.forEach(crmCode => {
-                    const opt = crmCode
-                        ? `${locationCode}${this.filters.serviceType}${crmCode}??????`
-                        : `${locationCode}${this.filters.serviceType}????????????`;
 
-                    const roomConfigs = this.buildApiRoomConfigs(this.filters.quantityRooms);
+                const opt = hotelCrmCodeIds.length > 0
+                    ? `${loc.TP_Location_Code__c}${this.filters.serviceType}${loc.CRM_Code__c}??????`
+                    : `${loc.TP_Location_Code__c}${this.filters.serviceType}????????????`;
 
-                    payloads.push({
-                        Opt: opt,
-                        Info: 'GSI',
-                        DateFrom: this.filters.startDate,
-                        SCUqty: this.filters.durationNights,
-                        ButtonName: this.serviceTypeMap[this.filters.serviceType] || 'Accommodation',
-                        RoomConfigs: roomConfigs,
-                        MaximumOptions: 30
-                    });
+                const roomConfigs = this.buildApiRoomConfigs(this.filters.quantityRooms);
+
+                payloads.push({
+                    Opt: opt,
+                    Info: 'GSI',
+                    DateFrom: this.filters.startDate,
+                    SCUqty: this.filters.durationNights,
+                    ButtonName: this.serviceTypeMap[this.filters.serviceType] || 'Accommodation',
+                    RoomConfigs: roomConfigs,
+                    MaximumOptions: 30
                 });
             });
 
@@ -1026,10 +1022,10 @@ export default class AvailabilitySearch extends LightningElement {
             const body = await getOptions({ reqPayload: JSON.stringify(requestPayload) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
-            console.log('Search results', raw);
+            console.log('Search response', raw);
 
             this.appendResultsFromRaw(raw, "Search", {
-                requestedCrms: (hotelCrmCodes || []).filter(Boolean),
+                requestedCrms: (hotelCrmCodeIds || []).filter(Boolean),
                 peStart: '', peEnd: ''
             });
         } catch (err) {
@@ -1065,10 +1061,11 @@ export default class AvailabilitySearch extends LightningElement {
 
 
     handleGroupHeaderInput = (e) => {
-        const crm = e.currentTarget.dataset.crm;
+        const groupKey = this.getGroupKeyFromEvent(e);
+        if (!groupKey) return;
         const { name, value } = e.target;
 
-        const prev = this.groupEdits[crm] || {};
+        const prev = this.groupEdits[groupKey] || {};
         const next = { ...prev, [name]: value };
 
         if (name === 'startDate' || name === 'durationNights') {
@@ -1077,11 +1074,11 @@ export default class AvailabilitySearch extends LightningElement {
             next.endDate = this.computeEndDate(start, nights);
         }
 
-        this.groupEdits = { ...this.groupEdits, [crm]: next };
+        this.groupEdits = { ...this.groupEdits, [groupKey]: next };
 
         this.groups = this.groups.map(g => {
-            if (g.crmCode !== crm) return g;
-            const eff = this.getEffectiveGroupFilters(crm);
+            if (g.groupKey !== groupKey) return g;
+            const eff = this.getEffectiveGroupFilters(groupKey);
             return {
                 ...g,
                 uiStartDate: eff.startDate || '',
@@ -1390,9 +1387,9 @@ export default class AvailabilitySearch extends LightningElement {
 
 
 
-    setGroupLoading(crmCode, value) {
+    setGroupLoading(groupKey, value) {
         this.groups = this.groups.map(g =>
-            g.crmCode === crmCode ? { ...g, loading: !!value } : g
+            g.groupKey === groupKey ? { ...g, loading: !!value } : g
         );
 
         this.buildDateSections();
@@ -1575,11 +1572,11 @@ export default class AvailabilitySearch extends LightningElement {
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
-    getEffectiveGroupFilters(crmCode) {
+    getEffectiveGroupFilters(groupKey) {
         const base = this.filters;
-        const ui = (this.groups || []).find(g => g.crmCode === crmCode) || {};
+        const ui = (this.groups || []).find(g => g.groupKey === groupKey) || {};
 
-        const ov = this.groupEdits[crmCode] || {};
+        const ov = this.groupEdits[groupKey] || {};
 
         const startDate = ov.startDate ?? ui.uiStartDate ?? base.startDate ?? '';
         const durationNights = String(ov.durationNights ?? ui.uiDurationNights ?? base.durationNights ?? '1');
@@ -1595,10 +1592,11 @@ export default class AvailabilitySearch extends LightningElement {
 
 
     handleGroupHeaderChange = (e) => {
-        const crm = e.currentTarget.dataset.crm;
+        const groupKey = this.getGroupKeyFromEvent(e);
+        if (!groupKey) return;
         const { name, value } = e.target;
 
-        const prev = this.groupEdits[crm] || {};
+        const prev = this.groupEdits[groupKey] || {};
         const next = { ...prev, [name]: value };
 
         if (name === 'startDate' || name === 'durationNights') {
@@ -1607,11 +1605,11 @@ export default class AvailabilitySearch extends LightningElement {
             next.endDate = this.computeEndDate(start, nights);
         }
 
-        this.groupEdits = { ...this.groupEdits, [crm]: next };
+        this.groupEdits = { ...this.groupEdits, [groupKey]: next };
 
         this.groups = this.groups.map(g => {
-            if (g.crmCode !== crm) return g;
-            const eff = this.getEffectiveGroupFilters(crm);
+            if (g.groupKey !== groupKey) return g;
+            const eff = this.getEffectiveGroupFilters(groupKey);
             return {
                 ...g,
                 uiStartDate: eff.startDate || '',
@@ -1655,14 +1653,23 @@ export default class AvailabilitySearch extends LightningElement {
         )];
     };
 
+    getGroupKeyFromEvent = (e) => e.currentTarget?.dataset?.groupkey || e.target?.dataset?.groupkey || '';
+
     handleGroupSearch = async (e) => {
-        const crm = e.currentTarget?.dataset?.crm;
-        if (!crm) return;
+        const groupKey = e.currentTarget?.dataset?.groupkey || e.target?.dataset?.groupkey || '';
+        if (!groupKey) return;
+
+        const grp = (this.groups || []).find(g => g.groupKey === groupKey);
+        if (!grp) return;
+
+        const crm = grp.crmCode;
+
+        console.log(`Group search for ${crm} in group ${groupKey}`);
+
+        this.setGroupLoading(groupKey, true);
 
         try {
-            this.setGroupLoading(crm, true);
-
-            const eff = this.getEffectiveGroupFilters(crm);
+            const eff = this.getEffectiveGroupFilters(groupKey);
             const effStart = eff.startDate;
             const effNights = String(eff.durationNights || '1');
             const effRooms = String(eff.quantityRooms || this.filters.quantityRooms || '1');
@@ -1678,14 +1685,19 @@ export default class AvailabilitySearch extends LightningElement {
                 locationCodes = await this.resolveLocationCodesForGroup(crm);
             }
             if (!locationCodes.length) {
-                this.showToast('Pick a location',
+                this.showToast(
+                    'Pick a location',
                     'Please select a location (or run a global search) before using hotel-level search.',
-                    'warning');
+                    'warning'
+                );
                 return;
             }
-            this.lastSelectedLocationCodes = Array.from(new Set([...(this.lastSelectedLocationCodes || []), ...locationCodes]));
-            const locCode = locationCodes[0];
 
+            this.lastSelectedLocationCodes = Array.from(
+                new Set([...(this.lastSelectedLocationCodes || []), ...locationCodes])
+            );
+
+            const locCode = locationCodes[0];
             const roomConfigs = this.buildApiRoomConfigs(effRooms);
 
             const records = [{
@@ -1698,34 +1710,31 @@ export default class AvailabilitySearch extends LightningElement {
                 MaximumOptions: 30
             }];
 
+            console.log('Group search payload:', records);
+
             const body = await getOptions({ reqPayload: JSON.stringify({ records }) });
             const raw = (typeof body === 'string') ? JSON.parse(body) : body;
 
+            console.log('Group search response:', raw);
+
             let newRows = this.transformApiData(raw).filter(r => r.crmCode === crm);
-
             newRows = newRows.filter(r => this.isOptAllowed(r.optId));
+            newRows = this.applyDateContext(newRows, effStart, effNights);
 
-            newRows = this.applyDateContext(newRows, effStart, String(effNights));
-
-            const groupStar = (this.groupEdits?.[crm]?.starRating || '').trim();
+            const groupStar = (this.groupEdits?.[groupKey]?.starRating || '').trim();
             const starsToFilter = groupStar ? [groupStar] : (this.selectedStarRatings || []);
             if (starsToFilter.length) {
                 newRows = newRows.filter(row =>
                     starsToFilter.some(s => row.starRating && row.starRating.toLowerCase().includes(s.toLowerCase()))
                 );
             }
-
             if ((this.selectedSupplierStatuses || []).length) {
                 newRows = newRows.filter(r => this.selectedSupplierStatuses.includes(r.supplierStatus));
             }
 
             newRows = newRows.map(r => {
                 const isSel = !!this.selectedKeys[r.uniqueKey];
-                return {
-                    ...r,
-                    isSelected: isSel,
-                    selectButtonClass: this.computeSelectClass(isSel)
-                };
+                return { ...r, isSelected: isSel, selectButtonClass: this.computeSelectClass(isSel) };
             });
 
             const sortItems = (arr) => arr.slice().sort((x, y) => {
@@ -1737,46 +1746,9 @@ export default class AvailabilitySearch extends LightningElement {
             });
             const sorted = sortItems(newRows);
 
-            const groupExists = (this.groups || []).some(g => g.crmCode === crm);
-            if (!groupExists) {
-                const supplierName = this.crmNameMap[crm] || crm;
-                const ferret = this.ferretDestinations?.[crm] || '';
-                const firstLocality = this.pickParentDestination(ferret) || ferret || '';
-                const hdrEnd = effStart ? this.computeEndDate(effStart, effNights) : '';
-                const newGroup = {
-                    crmCode: crm,
-                    supplier: supplierName,
-                    items: [],
-                    firstLocality,
-                    ferretDestinationLocation: ferret || firstLocality,
-                    uiStartDate: effStart || '',
-                    uiEndDate: hdrEnd || '',
-                    uiDurationNights: String(effNights || '1'),
-                    uiQuantityRooms: String(effRooms || '1'),
-                    uiStarRating: groupStar || '',
-                    loading: false
-                };
-                this.groups = [...(this.groups || []), newGroup]
-                    .sort((a, b) => (a.supplier || '').localeCompare(b.supplier || ''));
-
-                if (!this.groupEdits[crm]) {
-                    this.groupEdits = {
-                        ...this.groupEdits,
-                        [crm]: {
-                            startDate: newGroup.uiStartDate,
-                            durationNights: newGroup.uiDurationNights,
-                            endDate: newGroup.uiEndDate,
-                            quantityRooms: newGroup.uiQuantityRooms,
-                            starRating: newGroup.uiStarRating
-                        }
-                    };
-                }
-            }
-
             this.groups = (this.groups || []).map(g => {
-                if (g.crmCode !== crm) return g;
-
-                const effHdr = this.getEffectiveGroupFilters(crm);
+                if (g.groupKey !== groupKey) return g;
+                const effHdr = this.getEffectiveGroupFilters(groupKey);
                 return {
                     ...g,
                     items: sorted,
@@ -1791,18 +1763,20 @@ export default class AvailabilitySearch extends LightningElement {
 
             this.buildDateSections();
 
-            const others = (this.rows || []).filter(r => r.crmCode !== crm || r.dateKey !== newRows[0]?.dateKey);
+            const targetDateKey = newRows[0]?.dateKey || grp.dateKey;
+            const others = (this.rows || []).filter(r => !(r.crmCode === crm && r.dateKey === targetDateKey));
             const ts = Date.now();
             const refreshedRows = sorted.map((r, i) => ({ ...r, id: `${r.uniqueKey}-${ts}-${i}` }));
             this.rows = [...others, ...refreshedRows];
 
         } catch (err) {
-            const msg = (err && err.body && err.body.message) ? err.body.message : (err?.message || 'Unexpected error');
+            const msg = err?.body?.message || err?.message || 'Unexpected error';
             this.showToast('Error', msg, 'error');
         } finally {
-            this.setGroupLoading(crm, false);
+            this.setGroupLoading(groupKey, false);
         }
     };
+
 
     activateHeaderZ = (evt) => {
         const header = evt.currentTarget;
